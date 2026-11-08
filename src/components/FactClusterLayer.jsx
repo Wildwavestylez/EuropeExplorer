@@ -21,6 +21,15 @@ function localizedTitle(place, fact, lang) {
   return translated?.title || fact.title || fact.id
 }
 
+const categoryLabels = {
+  en: { castle:'Castle', historical_monument:'Historical monument', nature:'Nature', viewpoint_landscape:'Viewpoint / landscape', historic_city:'Historic city', museum:'Museum', religious_site:'Religious site', technical_heritage:'Technical heritage' },
+  de: { castle:'Burg / Schloss', historical_monument:'Historisches Denkmal', nature:'Natur', viewpoint_landscape:'Aussichtspunkt / Landschaft', historic_city:'Historische Stadt', museum:'Museum', religious_site:'Religiöser Ort', technical_heritage:'Technisches Kulturerbe' },
+  cs: { castle:'Hrad / zámek', historical_monument:'Historická památka', nature:'Příroda', viewpoint_landscape:'Vyhlídka / krajina', historic_city:'Historické město', museum:'Muzeum', religious_site:'Sakrální místo', technical_heritage:'Technické dědictví' },
+  es: { castle:'Castillo', historical_monument:'Monumento histórico', nature:'Naturaleza', viewpoint_landscape:'Mirador / paisaje', historic_city:'Ciudad histórica', museum:'Museo', religious_site:'Lugar religioso', technical_heritage:'Patrimonio técnico' },
+  fr: { castle:'Château', historical_monument:'Monument historique', nature:'Nature', viewpoint_landscape:'Belvédère / paysage', historic_city:'Ville historique', museum:'Musée', religious_site:'Site religieux', technical_heritage:'Patrimoine technique' },
+  it: { castle:'Castello', historical_monument:'Monumento storico', nature:'Natura', viewpoint_landscape:'Belvedere / paesaggio', historic_city:'Città storica', museum:'Museo', religious_site:'Luogo religioso', technical_heritage:'Patrimonio tecnico' },
+}
+
 export default function FactClusterLayer({ places, lang, onSelectFact }) {
   const map = useMap()
 
@@ -59,7 +68,7 @@ export default function FactClusterLayer({ places, lang, onSelectFact }) {
         const subtitle = document.createElement('div')
         subtitle.textContent = [place.postal_code, point.name, place.city].filter(Boolean).join(' · ')
         const category = document.createElement('small')
-        category.textContent = (fact.map_category || fact.category || 'discovery').replaceAll('_', ' ')
+        category.textContent = categoryLabels[lang]?.[fact.map_category] || (fact.category || 'Discovery').replaceAll('_', ' ')
         popup.append(title, summary, subtitle, category)
         marker.bindPopup(popup)
         marker.on('click', () => onSelectFact(place, fact))
