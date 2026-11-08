@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TRAVEL German postcode stop — Content Standard V3.1",
-  "description": "Content Standard V3.1 adds an explicit, map-oriented fact classification while retaining the editorial category.",
+  "title": "TRAVEL German postcode stop — Content Standard V3",
+  "description": "Content Standard V3 schema, including explicit fact-level map categories for consistent tourist map iconography.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -407,5 +407,5 @@
       }
     }
   },
-  "$comment": "CONTENT STANDARD V3.1: in addition to V3 geographic rules, every fact has one required map_category for consistent map iconography. Existing category remains the broader editorial classification. representative_point, access_point and facts[].location are separate and not interchangeable."
+  "$comment": "CONTENT STANDARD V3: every fact has one required map_category for consistent map iconography. Existing category remains the broader editorial classification. representative_point, access_point and facts[].location are separate and not interchangeable."
 }
