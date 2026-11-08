@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal } from 'lucide-react'
 import { supabase } from './lib/supabase'
-
-// Temporary production allowlist: only records explicitly reviewed as Content Standard V3.
-// Expand this list only after a postcode has passed the V3 audit.
-const V3_APPROVED_POSTCODES = { DE: ['13187'], CZ: [] }
+import { isV3Record } from './lib/v3'
+import FactClusterLayer from './components/FactClusterLayer'
 
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
@@ -20,39 +18,6 @@ const copy = {
   it: { eyebrow: 'Un continente da scoprire', title: 'Europa, un luogo alla volta.', subtitle: 'Scopri storie, luoghi e tesori locali.', search: 'Cerca luoghi o codici postali', all: 'Tutti i luoghi', results: 'aree pubblicate', explore: 'Esplora la mappa', details: 'Da scoprire', loading: 'Caricamento…', empty: 'Nessun luogo trovato.', choose: 'Seleziona un luogo sulla mappa o dall’elenco.', source: 'Esplora per CAP', note: 'I marcatori mostrano il punto rappresentativo di ogni area postale.' },
 }
 
-function isV3Record(content) {
-  if (!content || typeof content !== 'object') return false
-  const required = ['postcode','city','district','county','state','representative_place','representative_point','access_point','facts','photo','verification','sources','translations']
-  if (!required.every(key => Object.prototype.hasOwnProperty.call(content, key))) return false
-  const pointOk = p => p && Number.isFinite(p.lat) && Number.isFinite(p.lon)
-    && p.lat >= -90 && p.lat <= 90 && p.lon >= -180 && p.lon <= 180
-  if (!pointOk(content.representative_point) || !pointOk(content.access_point)) return false
-  if (!Array.isArray(content.facts) || content.facts.length === 0 || !Array.isArray(content.sources)) return false
-  const factIds = []
-  for (const fact of content.facts) {
-    if (!fact || !['id','title','text','category','priority','sources','location'].every(k => Object.prototype.hasOwnProperty.call(fact, k))) return false
-    if (typeof fact.id !== 'string' || !/^fact_\d{3}$/.test(fact.id)) return false
-    if (!fact.title || !fact.text || !Array.isArray(fact.sources)) return false
-    if (!['A','B','C','D'].includes(fact.priority)) return false
-    if (fact.location !== null) {
-      const loc = fact.location
-      if (!loc || typeof loc !== 'object' || !loc.name || !pointOk(loc)
-        || !loc.type || !loc.accuracy || !loc.source) return false
-    }
-    factIds.push(fact.id)
-  }
-  const langs = ['cs','de','en','es','fr','it']
-  if (!content.translations || !langs.every(lang => content.translations[lang]
-    && Array.isArray(content.translations[lang].facts)
-    && content.translations[lang].representative_place)) return false
-  for (const lang of langs) {
-    const ids = content.translations[lang].facts.map(f => f.id)
-    if (ids.length !== factIds.length || ids.some((id, i) => id !== factIds[i])) return false
-    if (content.translations[lang].facts.some(f => !f.title || !f.text)) return false
-  }
-  return true
-}
-
 function getLocalizedFacts(content, lang) {
   const base = Array.isArray(content?.facts) ? content.facts : []
   const translated = content?.translations?.[lang]?.facts
@@ -63,7 +28,8 @@ function getLocalizedFacts(content, lang) {
 function MapFocus({ place }) {
   const map = useMap()
   useEffect(() => {
-    if (place?.latitude && place?.longitude) map.flyTo([place.latitude, place.longitude], Math.max(map.getZoom(), 10), { duration: 0.8 })
+    const point = place?.content?.representative_point
+    if (Number.isFinite(point?.lat) && Number.isFinite(point?.lon)) map.flyTo([point.lat, point.lon], Math.max(map.getZoom(), 10), { duration: 0.8 })
   }, [place, map])
   return null
 }
@@ -89,10 +55,9 @@ export default function App() {
         while (true) {
           const { data, error } = await supabase
             .from('postal_codes')
-            .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
+            .select('id,country_code,postal_code,city,municipality,district,region,content')
             .eq('status', 'published')
             .eq('country_code', country)
-            .in('postal_code', V3_APPROVED_POSTCODES[country] || [])
             .order('postal_code')
             .range(from, from + pageSize - 1)
           if (error) throw error
@@ -100,7 +65,7 @@ export default function App() {
           if (!data || data.length < pageSize) break
           from += pageSize
         }
-        if (alive) setPlaces(all.filter(p => isV3Record(p.content)))
+        if (alive) setPlaces(all.filter(p => isV3Record(p.content, country)))
       } catch (e) {
         if (alive) setError(e.message || 'Could not load places from the database.')
       } finally {
@@ -118,8 +83,14 @@ export default function App() {
   }, [places, query])
 
   const facts = selected ? getLocalizedFacts(selected.content, lang) : []
-  const center = selected && selected.latitude && selected.longitude
-    ? [selected.latitude, selected.longitude] : [51.1657, 10.4515]
+  const selectedPoint = selected?.content?.representative_point
+  const center = Number.isFinite(selectedPoint?.lat) && Number.isFinite(selectedPoint?.lon)
+    ? [selectedPoint.lat, selectedPoint.lon] : [51.1657, 10.4515]
+  const factPinCount = filtered.reduce((total, place) => total + place.content.facts.filter(f => {
+    const point = f.location
+    return point && Number.isFinite(point.lat) && Number.isFinite(point.lon)
+      && point.lat >= -90 && point.lat <= 90 && point.lon >= -180 && point.lon <= 180
+  }).length, 0)
 
   return <main className="app-shell">
     <header className="topbar">
@@ -158,22 +129,18 @@ export default function App() {
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? 'GERMANY' : 'CZECHIA'} / EXPLORATION MAP</span><span>{filtered.length.toLocaleString()} AREAS</span></div>
+          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? 'GERMANY' : 'CZECHIA'} / EXPLORATION MAP</span><span>{factPinCount.toLocaleString()} FACT PINS · {filtered.length.toLocaleString()} AREAS</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} />
-            {filtered.filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)).map(p =>
-              <CircleMarker key={p.id} center={[p.latitude, p.longitude]} radius={selected?.id === p.id ? 9 : 5} pathOptions={{ color: selected?.id === p.id ? '#f2a65a' : '#f4f0e8', weight: 2, fillColor: selected?.id === p.id ? '#f2a65a' : '#284f68', fillOpacity: 0.9 }} eventHandlers={{ click: () => setSelected(p) }}>
-                <Popup><strong>{p.city || p.postal_code}</strong><br />{p.postal_code} · {p.region || ''}</Popup>
-              </CircleMarker>
-            )}
+            <FactClusterLayer places={filtered} lang={lang} onSelect={setSelected} />
           </MapContainer>
-          <div className="map-legend"><span className="legend-dot" /> POSTAL AREA <span className="legend-line" /> OPENSTREETMAP</div>
+          <div className="map-legend"><span className="legend-dot" /> FACT LOCATION <span className="legend-line" /> CLUSTERS MERGE ON ZOOM-OUT</div>
         </div>
 
         <aside className="detail-panel">
           {selected ? <>
-            <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">LOCAL DISCOVERY</span><span className="image-coords">{selected.latitude?.toFixed(3)}, {selected.longitude?.toFixed(3)}</span></div>
+            <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">LOCAL DISCOVERY</span><span className="image-coords">{selectedPoint?.lat?.toFixed(3)}, {selectedPoint?.lon?.toFixed(3)}</span></div>
             <div className="detail-content"><div className="detail-kicker">POSTAL AREA / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{facts.length.toString().padStart(2, '0')}</span></div>
               {facts.length ? <div className="fact-list">{facts.map((f, i) => <article className="fact" key={f.id || i}><span className="fact-index">{String(i + 1).padStart(2, '0')}</span><div><h4>{f.title || f.name || 'Discover this place'}</h4><p>{f.text || f.description || ''}</p><span className="fact-category">{(f.category || 'DISCOVERY').replaceAll('_', ' ').toUpperCase()}</span></div></article>)}</div> : <p className="detail-location">No published highlights are available for this area yet.</p>}
             </div><button className="close-detail" onClick={() => setSelected(null)} aria-label="Close details"><X size={16} /></button>
