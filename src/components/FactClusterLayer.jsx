@@ -21,7 +21,7 @@ function localizedTitle(place, fact, lang) {
   return translated?.title || fact.title || fact.id
 }
 
-export default function FactClusterLayer({ places, lang, onSelect }) {
+export default function FactClusterLayer({ places, lang, onSelectFact }) {
   const map = useMap()
 
   useEffect(() => {
@@ -53,18 +53,23 @@ export default function FactClusterLayer({ places, lang, onSelect }) {
         const popup = document.createElement('div')
         const title = document.createElement('strong')
         title.textContent = localizedTitle(place, fact, lang)
+        const summary = document.createElement('p')
+        const translated = place.content?.translations?.[lang]?.facts?.find(item => item.id === fact.id)
+        summary.textContent = translated?.text || translated?.description || fact.text || fact.description || ''
         const subtitle = document.createElement('div')
         subtitle.textContent = [place.postal_code, point.name, place.city].filter(Boolean).join(' · ')
-        popup.append(title, subtitle)
+        const category = document.createElement('small')
+        category.textContent = (fact.map_category || fact.category || 'discovery').replaceAll('_', ' ')
+        popup.append(title, summary, subtitle, category)
         marker.bindPopup(popup)
-        marker.on('click', () => onSelect(place))
+        marker.on('click', () => onSelectFact(place, fact))
         cluster.addLayer(marker)
       })
     })
 
     map.addLayer(cluster)
     return () => { map.removeLayer(cluster); cluster.clearLayers() }
-  }, [map, places, lang, onSelect])
+  }, [map, places, lang, onSelectFact])
 
   return null
 }
