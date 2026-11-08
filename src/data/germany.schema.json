@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TRAVEL German postcode stop — Content Standard V3",
-  "description": "Canonical TRAVEL German postcode record. Content Standard V3 distinguishes postcode representative coordinates, access-point coordinates, and independent fact-level locations. Existing fact content and translations remain unchanged during geographic enrichment.",
+  "title": "TRAVEL German postcode stop — Content Standard V3.1",
+  "description": "Content Standard V3.1 adds an explicit, map-oriented fact classification while retaining the editorial category.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -189,7 +189,8 @@
         "text",
         "category",
         "priority",
-        "sources"
+        "sources",
+        "map_category"
       ],
       "properties": {
         "id": {
@@ -246,6 +247,20 @@
               "type": "null"
             }
           ]
+        },
+        "map_category": {
+          "type": "string",
+          "enum": [
+            "castle",
+            "historical_monument",
+            "nature",
+            "viewpoint_landscape",
+            "historic_city",
+            "museum",
+            "religious_site",
+            "technical_heritage"
+          ],
+          "description": "Single primary map category for the specific subject of this fact. Used only for map iconography; the existing category field retains its broader editorial meaning."
         }
       }
     },
@@ -392,5 +407,5 @@
       }
     }
   },
-  "$comment": "CONTENT STANDARD V3: representative_point locates the single representative place for the postcode; access_point locates a practical access point; facts[].location locates the specific subject of an individual fact. These coordinates are not interchangeable. facts[].location is optional for legacy records; new and geographically enriched facts must include the property, using null only when no defensible location can be verified."
+  "$comment": "CONTENT STANDARD V3.1: in addition to V3 geographic rules, every fact has one required map_category for consistent map iconography. Existing category remains the broader editorial classification. representative_point, access_point and facts[].location are separate and not interchangeable."
 }
