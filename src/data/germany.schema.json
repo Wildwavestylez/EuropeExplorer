@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TRAVEL German postcode stop — Content Standard V3",
+  "description": "Canonical TRAVEL German postcode record. Content Standard V3 distinguishes postcode representative coordinates, access-point coordinates, and independent fact-level locations. Existing fact content and translations remain unchanged during geographic enrichment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "postcode",
+    "city",
+    "district",
+    "county",
+    "state",
+    "representative_place",
+    "representative_point",
+    "access_point",
+    "facts",
+    "photo",
+    "verification",
+    "sources",
+    "translations"
+  ],
+  "properties": {
+    "postcode": {
+      "type": "string",
+      "pattern": "^[0-9]{5}$"
+    },
+    "city": {
+      "type": "string",
+      "minLength": 1
+    },
+    "district": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "county": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "representative_place": {
+      "type": "string",
+      "minLength": 1
+    },
+    "representative_point": {
+      "$ref": "#/$defs/point",
+      "description": "Coordinates of the postcode's single representative_place. This is a postcode-level representative location, not an access point and not a fact location."
+    },
+    "access_point": {
+      "$ref": "#/$defs/point",
+      "description": "Coordinates of the practical access/arrival point for the postcode. This is not the representative place and not a fact location."
+    },
+    "facts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fact"
+      }
+    },
+    "photo": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plz_source",
+        "geographic_test_data",
+        "access_point_verified"
+      ],
+      "properties": {
+        "plz_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "geographic_test_data": {
+          "type": "boolean"
+        },
+        "access_point_verified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "translations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cs",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it"
+      ],
+      "properties": {
+        "cs": {
+          "$ref": "#/$defs/translation"
+        },
+        "de": {
+          "$ref": "#/$defs/translation"
+        },
+        "en": {
+          "$ref": "#/$defs/translation"
+        },
+        "es": {
+          "$ref": "#/$defs/translation"
+        },
+        "fr": {
+          "$ref": "#/$defs/translation"
+        },
+        "it": {
+          "$ref": "#/$defs/translation"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "text",
+        "category",
+        "priority",
+        "sources"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^fact_[0-9]{3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "nature_and_landscape",
+            "heritage_and_monuments",
+            "architecture_and_urbanism",
+            "history",
+            "culture_and_industry",
+            "people",
+            "geography_and_context",
+            "tourism_and_surroundings",
+            "hidden_gem",
+            "local_story",
+            "other_verified_significance"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "location": {
+          "description": "Independent geographic location of the subject of this specific fact. Do not copy representative_point or access_point here. Optional only for legacy-record compatibility; new/enriched facts must include this property and use null when a defensible location cannot be verified.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/fact_location"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "url",
+        "type"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "official",
+            "primary",
+            "archive",
+            "museum",
+            "university",
+            "specialist",
+            "news",
+            "regional",
+            "other"
+          ]
+        }
+      }
+    },
+    "translation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "representative_place",
+        "facts"
+      ],
+      "properties": {
+        "representative_place": {
+          "type": "string",
+          "minLength": 1
+        },
+        "facts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/translated_fact"
+          }
+        }
+      }
+    },
+    "translated_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^fact_[0-9]{3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "fact_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "lat",
+        "lon",
+        "type",
+        "accuracy",
+        "source"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the specific site, feature, or historically documented place to which the fact refers."
+        },
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Verified postal address when one exists; null for natural features or locations without a reliable street address."
+        },
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "building",
+            "monument",
+            "infrastructure",
+            "natural_feature",
+            "landscape_area",
+            "archaeological_site",
+            "historical_site",
+            "event_location",
+            "other"
+          ]
+        },
+        "accuracy": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "approximate",
+            "area_representative",
+            "historical_approximate"
+          ],
+          "description": "exact = verified point on the specific object/site; approximate = location known but point is not exact; area_representative = representative point within an extended natural/landscape area; historical_approximate = documented historical location whose exact position is uncertain."
+        },
+        "source": {
+          "type": "string",
+          "format": "uri",
+          "description": "Direct URL supporting the identification or geographic position of this fact location."
+        }
+      }
+    }
+  },
+  "$comment": "CONTENT STANDARD V3: representative_point locates the single representative place for the postcode; access_point locates a practical access point; facts[].location locates the specific subject of an individual fact. These coordinates are not interchangeable. facts[].location is optional for legacy records; new and geographically enriched facts must include the property, using null only when no defensible location can be verified."
+}
