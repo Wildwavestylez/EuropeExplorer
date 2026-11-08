@@ -3,6 +3,10 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaf
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal } from 'lucide-react'
 import { supabase } from './lib/supabase'
 
+// Temporary production allowlist: only records explicitly reviewed as Content Standard V3.
+// Expand this list only after a postcode has passed the V3 audit.
+const V3_APPROVED_POSTCODES = { DE: ['13187'], CZ: [] }
+
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' },
@@ -14,6 +18,39 @@ const copy = {
   es: { eyebrow: 'Un continente por descubrir', title: 'Europa, lugar por lugar.', subtitle: 'Descubre historias, lugares y rincones especiales.', search: 'Buscar lugares o códigos postales', all: 'Todos los lugares', results: 'zonas publicadas', explore: 'Explorar el mapa', details: 'Lugares destacados', loading: 'Cargando lugares…', empty: 'No se encontraron lugares.', choose: 'Elige un lugar en el mapa o en la lista.', source: 'Explorar por código postal', note: 'Los marcadores muestran el punto representativo de cada zona postal.' },
   fr: { eyebrow: 'Un continent à découvrir', title: 'L’Europe, lieu après lieu.', subtitle: 'Explorez les histoires et lieux remarquables.', search: 'Rechercher un lieu ou code postal', all: 'Tous les lieux', results: 'zones publiées', explore: 'Explorer la carte', details: 'À découvrir', loading: 'Chargement…', empty: 'Aucun lieu trouvé.', choose: 'Choisissez un lieu sur la carte ou dans la liste.', source: 'Explorer par code postal', note: 'Les marqueurs indiquent le point représentatif de chaque zone postale.' },
   it: { eyebrow: 'Un continente da scoprire', title: 'Europa, un luogo alla volta.', subtitle: 'Scopri storie, luoghi e tesori locali.', search: 'Cerca luoghi o codici postali', all: 'Tutti i luoghi', results: 'aree pubblicate', explore: 'Esplora la mappa', details: 'Da scoprire', loading: 'Caricamento…', empty: 'Nessun luogo trovato.', choose: 'Seleziona un luogo sulla mappa o dall’elenco.', source: 'Esplora per CAP', note: 'I marcatori mostrano il punto rappresentativo di ogni area postale.' },
+}
+
+function isV3Record(content) {
+  if (!content || typeof content !== 'object') return false
+  const required = ['postcode','city','district','county','state','representative_place','representative_point','access_point','facts','photo','verification','sources','translations']
+  if (!required.every(key => Object.prototype.hasOwnProperty.call(content, key))) return false
+  const pointOk = p => p && Number.isFinite(p.lat) && Number.isFinite(p.lon)
+    && p.lat >= -90 && p.lat <= 90 && p.lon >= -180 && p.lon <= 180
+  if (!pointOk(content.representative_point) || !pointOk(content.access_point)) return false
+  if (!Array.isArray(content.facts) || content.facts.length === 0 || !Array.isArray(content.sources)) return false
+  const factIds = []
+  for (const fact of content.facts) {
+    if (!fact || !['id','title','text','category','priority','sources','location'].every(k => Object.prototype.hasOwnProperty.call(fact, k))) return false
+    if (typeof fact.id !== 'string' || !/^fact_\\d{3}$/.test(fact.id)) return false
+    if (!fact.title || !fact.text || !Array.isArray(fact.sources)) return false
+    if (!['A','B','C','D'].includes(fact.priority)) return false
+    if (fact.location !== null) {
+      const loc = fact.location
+      if (!loc || typeof loc !== 'object' || !loc.name || !pointOk(loc)
+        || !loc.type || !loc.accuracy || !loc.source) return false
+    }
+    factIds.push(fact.id)
+  }
+  const langs = ['cs','de','en','es','fr','it']
+  if (!content.translations || !langs.every(lang => content.translations[lang]
+    && Array.isArray(content.translations[lang].facts)
+    && content.translations[lang].representative_place)) return false
+  for (const lang of langs) {
+    const ids = content.translations[lang].facts.map(f => f.id)
+    if (ids.length !== factIds.length || ids.some((id, i) => id !== factIds[i])) return false
+    if (content.translations[lang].facts.some(f => !f.title || !f.text)) return false
+  }
+  return true
 }
 
 function getLocalizedFacts(content, lang) {
@@ -55,6 +92,7 @@ export default function App() {
             .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
             .eq('status', 'published')
             .eq('country_code', country)
+            .in('postal_code', V3_APPROVED_POSTCODES[country] || [])
             .order('postal_code')
             .range(from, from + pageSize - 1)
           if (error) throw error
@@ -62,7 +100,7 @@ export default function App() {
           if (!data || data.length < pageSize) break
           from += pageSize
         }
-        if (alive) setPlaces(all)
+        if (alive) setPlaces(all.filter(p => isV3Record(p.content)))
       } catch (e) {
         if (alive) setError(e.message || 'Could not load places from the database.')
       } finally {
