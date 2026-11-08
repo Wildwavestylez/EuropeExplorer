@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
-import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal } from 'lucide-react'
+import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { isV3Record } from './lib/v3'
 import FactClusterLayer from './components/FactClusterLayer'
@@ -68,6 +68,9 @@ export default function App() {
   const [country, setCountry] = useState('DE')
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [placesOpen, setPlacesOpen] = useState(false)
   const t = copy[lang] || copy.en
 
   useEffect(() => {
@@ -133,7 +136,7 @@ export default function App() {
       <a className="brand" href="#"><span className="brand-mark"><Compass size={20} /></span><span>EUROPE<span className="brand-light">EXPLORER</span></span></a>
       <div className="top-actions">
         <span className="live-dot" /><span className="top-caption">DISCOVER THE UNEXPECTED</span>
-        <div className="language-switch">{LANGS.map(l => <button key={l.id} className={lang === l.id ? 'active' : ''} onClick={() => setLang(l.id)}>{l.label}</button>)}</div>
+        <div className={`language-switch ${menuOpen ? "menu-visible" : ""}`}>{LANGS.map(l => <button key={l.id} className={lang === l.id ? "active" : ""} onClick={() => { setLang(l.id); setMenuOpen(false) }}>{l.label}</button>)}</div><button className="menu-toggle" onClick={() => setMenuOpen(v => !v)} aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
       </div>
     </header>
 
@@ -150,19 +153,19 @@ export default function App() {
 
     <section className="workspace">
       <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedState(''); setSelectedCounty('') }}><option value="DE">Germany · DE</option><option value="CZ">Czechia · CZ</option></select></div></div>
-      <div className="filter-bar">
+      <div className="mobile-tools"><button onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen}><Filter size={16} /> FILTERS</button><button onClick={() => setPlacesOpen(v => !v)} aria-expanded={placesOpen}><List size={16} /> PLACES ({filtered.length})</button></div><div className={`filter-bar ${filtersOpen ? "mobile-open" : ""}`}>
         <label className="filter-field"><span>{country === 'DE' ? 'BUNDESLAND' : 'REGION'}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedCounty(''); setSelected(null) }}><option value="">{country === 'DE' ? 'Alle Bundesländer' : 'All regions'}</option>{stateOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <label className="filter-field"><span>{country === 'DE' ? 'LANDKREIS / KREIS' : 'DISTRICT'}</span><select value={selectedCounty} onChange={e => { setSelectedCounty(e.target.value); setSelected(null) }}><option value="">Alle Kreise</option>{countyOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <button className="filter-reset" onClick={() => { setSelectedState(''); setSelectedCounty(''); setQuery(''); setSelected(null) }}>RESET FILTERS</button>
       </div>
       <div className="explorer-grid">
-        <aside className="places-panel">
+        <aside className={`places-panel ${placesOpen ? "mobile-open" : ""}`}>
           <div className="panel-head"><span>{t.all}</span><span className="count">{filtered.length}</span></div>
           <div className="place-list">
             {loading && <div className="state-message"><LoaderCircle className="spin" size={20} />{t.loading}</div>}
             {error && <div className="error-message">{error}</div>}
             {!loading && !error && filtered.length === 0 && <div className="state-message">{t.empty}</div>}
-            {filtered.map(p => <button key={p.id} className={'place-row ' + (selected?.id === p.id ? 'selected' : '')} onClick={() => setSelected(p)}>
+            {filtered.map(p => <button key={p.id} className={'place-row ' + (selected?.id === p.id ? 'selected' : '')} onClick={() => { setSelected(p); setPlacesOpen(false) }}>
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
@@ -179,7 +182,7 @@ export default function App() {
           <div className="map-legend"><span className="legend-dot" /> FACT LOCATION <span className="legend-line" /> CLUSTERS MERGE ON ZOOM-OUT</div>
         </div>
 
-        <aside className="detail-panel">
+        <aside className={`detail-panel ${selected ? "has-selection" : ""}`}>
           {selected ? <>
             <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">LOCAL DISCOVERY</span><span className="image-coords">{selectedPoint?.lat?.toFixed(3)}, {selectedPoint?.lon?.toFixed(3)}</span></div>
             <div className="detail-content"><div className="detail-kicker">POSTAL AREA / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{facts.length.toString().padStart(2, '0')}</span></div>
