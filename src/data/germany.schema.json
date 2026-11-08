@@ -386,8 +386,10 @@
             "archaeological_site",
             "historical_site",
             "event_location",
-            "other"
-          ]
+            "other",
+            "postal_area"
+          ],
+          "description": "postal_area = postcode-level representative placement used when a fact is genuinely associated with the postal-code area but has no single defensible physical point."
         },
         "accuracy": {
           "type": "string",
@@ -397,7 +399,7 @@
             "area_representative",
             "historical_approximate"
           ],
-          "description": "exact = verified point on the specific object/site; approximate = location known but point is not exact; area_representative = representative point within an extended natural/landscape area; historical_approximate = documented historical location whose exact position is uncertain."
+          "description": "exact = verified point on the specific object/site; approximate = location known but point is not exact; area_representative = representative point used for an extended area or a fact associated with the postal-code area rather than one specific site; historical_approximate = documented historical location whose exact position is uncertain."
         },
         "source": {
           "type": "string",
@@ -407,5 +409,5 @@
       }
     }
   },
-  "$comment": "CONTENT STANDARD V3: every fact has one required map_category for consistent map iconography. Existing category remains the broader editorial classification. representative_point, access_point and facts[].location are separate and not interchangeable."
+  "$comment": "CONTENT STANDARD V3: every fact has one required map_category for consistent map iconography. Existing category remains the broader editorial classification. representative_point, access_point and facts[].location are separate and not interchangeable. A postal_area fact location may intentionally reuse representative_point with type=postal_area and accuracy=area_representative."
 }
