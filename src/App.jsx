@@ -25,13 +25,37 @@ function getLocalizedFacts(content, lang) {
   return base.map(f => ({ ...f, ...(byId.get(f.id) || {}) }))
 }
 
-function MapFocus({ place }) {
+function factCoordinates(place) {
+  return (place?.content?.facts || []).map(fact => fact.location)
+    .filter(point => point && Number.isFinite(point.lat) && Number.isFinite(point.lon)
+      && point.lat >= -90 && point.lat <= 90 && point.lon >= -180 && point.lon <= 180)
+    .map(point => [point.lat, point.lon])
+}
+
+function MapFocus({ place, places }) {
   const map = useMap()
   useEffect(() => {
-    const point = place?.content?.representative_point
-    if (Number.isFinite(point?.lat) && Number.isFinite(point?.lon)) map.flyTo([point.lat, point.lon], Math.max(map.getZoom(), 10), { duration: 0.8 })
-  }, [place, map])
+    const points = place ? factCoordinates(place) : places.flatMap(factCoordinates)
+    if (points.length > 1) {
+      map.fitBounds(points, { padding: [58, 58], maxZoom: place ? 15 : 6, animate: true, duration: 0.8 })
+    } else if (points.length === 1) {
+      map.flyTo(points[0], place ? 14 : 6, { duration: 0.8 })
+    } else if (place) {
+      const point = place.content?.representative_point
+      if (Number.isFinite(point?.lat) && Number.isFinite(point?.lon)) map.flyTo([point.lat, point.lon], 11, { duration: 0.8 })
+    } else {
+      map.setView([51.1657, 10.4515], 6, { animate: true })
+    }
+  }, [place, places, map])
   return null
+}
+
+function getState(place) {
+  return place.content?.state || place.region || ''
+}
+
+function getCounty(place) {
+  return place.content?.county || place.district || ''
 }
 
 export default function App() {
@@ -42,6 +66,8 @@ export default function App() {
   const [lang, setLang] = useState('en')
   const [selected, setSelected] = useState(null)
   const [country, setCountry] = useState('DE')
+  const [selectedState, setSelectedState] = useState('')
+  const [selectedCounty, setSelectedCounty] = useState('')
   const t = copy[lang] || copy.en
 
   useEffect(() => {
@@ -76,11 +102,21 @@ export default function App() {
     return () => { alive = false }
   }, [country])
 
+  const stateOptions = useMemo(() => [...new Set(places.map(getState).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [places])
+  const countyOptions = useMemo(() => [...new Set(places
+    .filter(place => !selectedState || getState(place) === selectedState)
+    .map(getCounty).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [places, selectedState])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase()
-    if (!q) return places
-    return places.filter(p => [p.postal_code, p.city, p.municipality, p.district, p.region].filter(Boolean).join(' ').toLocaleLowerCase().includes(q))
-  }, [places, query])
+    return places.filter(p => {
+      if (selectedState && getState(p) !== selectedState) return false
+      if (selectedCounty && getCounty(p) !== selectedCounty) return false
+      if (!q) return true
+      return [p.postal_code, p.city, p.municipality, getCounty(p), getState(p)]
+        .filter(Boolean).join(' ').toLocaleLowerCase().includes(q)
+    })
+  }, [places, query, selectedState, selectedCounty])
 
   const facts = selected ? getLocalizedFacts(selected.content, lang) : []
   const selectedPoint = selected?.content?.representative_point
@@ -113,7 +149,12 @@ export default function App() {
     </section>
 
     <section className="workspace">
-      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null) }}><option value="DE">Germany · DE</option><option value="CZ">Czechia · CZ</option></select></div></div>
+      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedState(''); setSelectedCounty('') }}><option value="DE">Germany · DE</option><option value="CZ">Czechia · CZ</option></select></div></div>
+      <div className="filter-bar">
+        <label className="filter-field"><span>{country === 'DE' ? 'BUNDESLAND' : 'REGION'}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedCounty(''); setSelected(null) }}><option value="">{country === 'DE' ? 'Alle Bundesländer' : 'All regions'}</option>{stateOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label className="filter-field"><span>{country === 'DE' ? 'LANDKREIS / KREIS' : 'DISTRICT'}</span><select value={selectedCounty} onChange={e => { setSelectedCounty(e.target.value); setSelected(null) }}><option value="">Alle Kreise</option>{countyOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <button className="filter-reset" onClick={() => { setSelectedState(''); setSelectedCounty(''); setQuery(''); setSelected(null) }}>RESET FILTERS</button>
+      </div>
       <div className="explorer-grid">
         <aside className="places-panel">
           <div className="panel-head"><span>{t.all}</span><span className="count">{filtered.length}</span></div>
@@ -132,7 +173,7 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? 'GERMANY' : 'CZECHIA'} / EXPLORATION MAP</span><span>{factPinCount.toLocaleString()} FACT PINS · {filtered.length.toLocaleString()} AREAS</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} />
+            <MapFocus place={selected} places={filtered} />
             <FactClusterLayer places={filtered} lang={lang} onSelect={setSelected} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> FACT LOCATION <span className="legend-line" /> CLUSTERS MERGE ON ZOOM-OUT</div>
