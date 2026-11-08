@@ -225,7 +225,7 @@ export default function App() {
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{factPinCount.toLocaleString()} {u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
+          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{factPinCount.toLocaleString()} {u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} places={filtered} />
