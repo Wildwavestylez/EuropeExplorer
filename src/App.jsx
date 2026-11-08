@@ -20,7 +20,7 @@ const copy = {
 
 
 const uiCopy = {
-  en: { tagline:'{u.tagline}', openMenu:'Open menu', closeMenu:'Close menu', filters:'FILTERS', places:'PLACES', germany:'GERMANY', czechia:'CZECHIA', map:'EXPLORATION MAP', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'DISTRICT', allStates:'All federal states', allRegions:'All regions', allCounties:'All districts', reset:'RESET FILTERS', live:'{u.live}', pins:'FACT PINS', areas:'AREAS', factLocation:'FACT LOCATION', clusterHint:'CLUSTERS MERGE ON ZOOM-OUT', pinDiscovery:'PIN DISCOVERY', localDiscovery:'LOCAL DISCOVERY', postalArea:'POSTAL AREA', discover:u.discover, noHighlights:'{u.noHighlights}', next:'{u.next}', closeDetails:'Close details', footer:'{u.footer}', error:u.error },
+  en: { tagline:'DISCOVER THE UNEXPECTED', openMenu:'Open menu', closeMenu:'Close menu', filters:'FILTERS', places:'PLACES', germany:'GERMANY', czechia:'CZECHIA', map:'EXPLORATION MAP', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'DISTRICT', allStates:'All federal states', allRegions:'All regions', allCounties:'All districts', reset:'RESET FILTERS', live:'LIVE DATA · SUPABASE', pins:'FACT PINS', areas:'AREAS', factLocation:'FACT LOCATION', clusterHint:'CLUSTERS MERGE ON ZOOM-OUT', pinDiscovery:'PIN DISCOVERY', localDiscovery:'LOCAL DISCOVERY', postalArea:'POSTAL AREA', discover:'Discover this place', noHighlights:'No published highlights are available for this area yet.', next:'YOUR NEXT DISCOVERY', closeDetails:'Close details', footer:'BUILT FOR THE CURIOUS · DATA FROM PUBLISHED POSTAL AREAS', error:'Could not load places from the database.' },
   de: { tagline:'ENTDECKE DAS UNERWARTETE', openMenu:'Menü öffnen', closeMenu:'Menü schließen', filters:'FILTER', places:'ORTE', germany:'DEUTSCHLAND', czechia:'TSCHECHIEN', map:'ENTDECKUNGSKARTE', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'LANDKREIS', allStates:'Alle Bundesländer', allRegions:'Alle Regionen', allCounties:'Alle Landkreise', reset:'FILTER ZURÜCKSETZEN', live:'LIVE-DATEN · SUPABASE', pins:'FAKTEN-MARKER', areas:'GEBIETE', factLocation:'ORT DER SEHENSWÜRDIGKEIT', clusterHint:'CLUSTER BEIM HERAUSZOOMEN ZUSAMMENGEFASST', pinDiscovery:'ENTDECKUNG PER MARKER', localDiscovery:'ENTDECKUNG VOR ORT', postalArea:'POSTLEITZAHLGEBIET', discover:'Diesen Ort entdecken', noHighlights:'Für dieses Gebiet sind noch keine veröffentlichten Highlights verfügbar.', next:'DEINE NÄCHSTE ENTDECKUNG', closeDetails:'Details schließen', footer:'FÜR ENTDECKER · DATEN AUS VERÖFFENTLICHTEN POSTLEITZAHLGEBIETEN', error:'Orte konnten nicht aus der Datenbank geladen werden.' },
   cs: { tagline:'OBJEVUJ NEČEKANÉ', openMenu:'Otevřít menu', closeMenu:'Zavřít menu', filters:'FILTRY', places:'MÍSTA', germany:'NĚMECKO', czechia:'ČESKO', map:'MAPA OBJEVŮ', bundesland:'SPOLKOVÁ ZEMĚ', region:'KRAJ', county:'OKRES', district:'OKRES', allStates:'Všechny spolkové země', allRegions:'Všechny kraje', allCounties:'Všechny okresy', reset:'VYMAZAT FILTRY', live:'ŽIVÁ DATA · SUPABASE', pins:'ZAJÍMAVOSTI NA MAPĚ', areas:'OBLASTI', factLocation:'MÍSTO ZAJÍMAVOSTI', clusterHint:'PŘI ODDÁLENÍ SE BODY SESKUPUJÍ', pinDiscovery:'OBJEV Z MAPY', localDiscovery:'MÍSTNÍ OBJEV', postalArea:'OBLAST PSČ', discover:'Objev toto místo', noHighlights:'Pro tuto oblast zatím nejsou dostupné žádné publikované zajímavosti.', next:'TVŮJ DALŠÍ OBJEV', closeDetails:'Zavřít detail', footer:'PRO ZVĚDAVÉ · DATA Z PUBLIKOVANÝCH POŠTOVNÍCH OBLASTÍ', error:'Místa se nepodařilo načíst z databáze.' },
   es: { tagline:'DESCUBRE LO INESPERADO', openMenu:'Abrir menú', closeMenu:'Cerrar menú', filters:'FILTROS', places:'LUGARES', germany:'ALEMANIA', czechia:'CHEQUIA', map:'MAPA DE EXPLORACIÓN', bundesland:'ESTADO FEDERADO', region:'REGIÓN', county:'DISTRITO', district:'DISTRITO', allStates:'Todos los estados federados', allRegions:'Todas las regiones', allCounties:'Todos los distritos', reset:'BORRAR FILTROS', live:'DATOS EN DIRECTO · SUPABASE', pins:'PUNTOS DE INTERÉS', areas:'ZONAS', factLocation:'UBICACIÓN DEL PUNTO', clusterHint:'LOS GRUPOS SE UNEN AL ALEJAR EL ZOOM', pinDiscovery:'DESCUBRIMIENTO EN EL MAPA', localDiscovery:'DESCUBRIMIENTO LOCAL', postalArea:'ZONA POSTAL', discover:'Descubre este lugar', noHighlights:'Todavía no hay lugares destacados publicados para esta zona.', next:'TU PRÓXIMO DESCUBRIMIENTO', closeDetails:'Cerrar detalles', footer:'PARA PERSONAS CURIOSAS · DATOS DE ZONAS POSTALES PUBLICADAS', error:'No se pudieron cargar los lugares de la base de datos.' },
@@ -116,7 +116,7 @@ export default function App() {
         }
         if (alive) setPlaces(all.filter(p => isV3Record(p.content, country)))
       } catch (e) {
-        if (alive) setError(e.message || 'Could not load places from the database.')
+        if (alive) setError(e.message || u.error)
       } finally {
         if (alive) setLoading(false)
       }
@@ -192,7 +192,7 @@ export default function App() {
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
-          <div className="panel-foot"><span className="status-dot" /> LIVE DATA · SUPABASE</div>
+          <div className="panel-foot"><span className="status-dot" /> {u.live}</div>
         </aside>
 
         <div className="map-panel">
@@ -209,12 +209,12 @@ export default function App() {
           {selected ? <>
             <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">{selectedFact ? u.pinDiscovery : u.localDiscovery}</span><span className="image-coords">{(selectedFact?.location || selectedPoint)?.lat?.toFixed(3)}, {(selectedFact?.location || selectedPoint)?.lon?.toFixed(3)}</span></div>
             <div className="detail-content"><div className="detail-kicker">{selectedFact ? u.pinDiscovery : u.postalArea} / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{facts.length.toString().padStart(2, '0')}</span></div>
-              {facts.length ? <div className="fact-list">{facts.map((f, i) => <article className="fact" key={f.id || i}><span className="fact-index">{String(i + 1).padStart(2, '0')}</span><div><h4>{f.title || f.name || 'Discover this place'}</h4><p>{f.text || f.description || ''}</p><span className="fact-category">{(f.category || 'DISCOVERY').replaceAll('_', ' ').toUpperCase()}</span></div></article>)}</div> : <p className="detail-location">No published highlights are available for this area yet.</p>}
+              {facts.length ? <div className="fact-list">{facts.map((f, i) => <article className="fact" key={f.id || i}><span className="fact-index">{String(i + 1).padStart(2, '0')}</span><div><h4>{f.title || f.name || u.discover}</h4><p>{f.text || f.description || ''}</p><span className="fact-category">{(f.category || 'DISCOVERY').replaceAll('_', ' ').toUpperCase()}</span></div></article>)}</div> : <p className="detail-location">{u.noHighlights}</p>}
             </div><button className="close-detail" onClick={() => { setSelected(null); setSelectedFact(null) }} aria-label={u.closeDetails}><X size={16} /></button>
-          </> : <div className="empty-detail"><div className="empty-icon"><MapPin size={26} /></div><span>YOUR NEXT DISCOVERY</span><h3>{t.choose}</h3><p>{t.note}</p></div>}
+          </> : <div className="empty-detail"><div className="empty-icon"><MapPin size={26} /></div><span>{u.next}</span><h3>{t.choose}</h3><p>{t.note}</p></div>}
         </aside>
       </div>
     </section>
-    <footer><span>EUROPE EXPLORER</span><span>BUILT FOR THE CURIOUS · DATA FROM PUBLISHED POSTAL AREAS</span><span>© 2026</span></footer>
+    <footer><span>EUROPE EXPLORER</span><span>{u.footer}</span><span>© 2026</span></footer>
   </main>
 }
