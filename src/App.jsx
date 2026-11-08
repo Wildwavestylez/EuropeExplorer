@@ -31,7 +31,7 @@ function isV3Record(content) {
   const factIds = []
   for (const fact of content.facts) {
     if (!fact || !['id','title','text','category','priority','sources','location'].every(k => Object.prototype.hasOwnProperty.call(fact, k))) return false
-    if (typeof fact.id !== 'string' || !/^fact_\\d{3}$/.test(fact.id)) return false
+    if (typeof fact.id !== 'string' || !/^fact_\d{3}$/.test(fact.id)) return false
     if (!fact.title || !fact.text || !Array.isArray(fact.sources)) return false
     if (!['A','B','C','D'].includes(fact.priority)) return false
     if (fact.location !== null) {
