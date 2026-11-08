@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter } from 'lucide-react'
 import { supabase } from './lib/supabase'
@@ -32,10 +32,13 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, places }) {
+function MapFocus({ place, selectedFact, places }) {
   const map = useMap()
   useEffect(() => {
-    const points = place ? factCoordinates(place) : places.flatMap(factCoordinates)
+    const factPoint = selectedFact?.location
+    const points = place && factPoint && Number.isFinite(factPoint.lat) && Number.isFinite(factPoint.lon)
+      ? [[factPoint.lat, factPoint.lon]]
+      : place ? factCoordinates(place) : places.flatMap(factCoordinates)
     if (points.length > 1) {
       map.fitBounds(points, { padding: [58, 58], maxZoom: place ? 15 : 6, animate: true, duration: 0.8 })
     } else if (points.length === 1) {
@@ -65,6 +68,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [lang, setLang] = useState('en')
   const [selected, setSelected] = useState(null)
+  const [selectedFact, setSelectedFact] = useState(null)
   const [country, setCountry] = useState('DE')
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
@@ -72,6 +76,11 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [placesOpen, setPlacesOpen] = useState(false)
   const t = copy[lang] || copy.en
+
+  const handleFactSelect = useCallback((place, fact) => {
+    setSelected(place)
+    setSelectedFact(fact)
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -121,7 +130,10 @@ export default function App() {
     })
   }, [places, query, selectedState, selectedCounty])
 
-  const facts = selected ? getLocalizedFacts(selected.content, lang) : []
+  const localizedFacts = selected ? getLocalizedFacts(selected.content, lang) : []
+  const facts = selectedFact
+    ? localizedFacts.filter(fact => fact.id === selectedFact.id)
+    : localizedFacts
   const selectedPoint = selected?.content?.representative_point
   const center = Number.isFinite(selectedPoint?.lat) && Number.isFinite(selectedPoint?.lon)
     ? [selectedPoint.lat, selectedPoint.lon] : [51.1657, 10.4515]
@@ -152,11 +164,11 @@ export default function App() {
     </section>
 
     <section className="workspace">
-      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedState(''); setSelectedCounty('') }}><option value="DE">Germany · DE</option><option value="CZ">Czechia · CZ</option></select></div></div>
+      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedFact(null); setSelectedState(''); setSelectedCounty('') }}><option value="DE">Germany · DE</option><option value="CZ">Czechia · CZ</option></select></div></div>
       <div className="mobile-tools"><button onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen}><Filter size={16} /> FILTERS</button><button onClick={() => setPlacesOpen(v => !v)} aria-expanded={placesOpen}><List size={16} /> PLACES ({filtered.length})</button></div><div className={`filter-bar ${filtersOpen ? "mobile-open" : ""}`}>
-        <label className="filter-field"><span>{country === 'DE' ? 'BUNDESLAND' : 'REGION'}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedCounty(''); setSelected(null) }}><option value="">{country === 'DE' ? 'Alle Bundesländer' : 'All regions'}</option>{stateOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label className="filter-field"><span>{country === 'DE' ? 'BUNDESLAND' : 'REGION'}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedCounty(''); setSelected(null); setSelectedFact(null) }}><option value="">{country === 'DE' ? 'Alle Bundesländer' : 'All regions'}</option>{stateOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <label className="filter-field"><span>{country === 'DE' ? 'LANDKREIS / KREIS' : 'DISTRICT'}</span><select value={selectedCounty} onChange={e => { setSelectedCounty(e.target.value); setSelected(null) }}><option value="">Alle Kreise</option>{countyOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-        <button className="filter-reset" onClick={() => { setSelectedState(''); setSelectedCounty(''); setQuery(''); setSelected(null) }}>RESET FILTERS</button>
+        <button className="filter-reset" onClick={() => { setSelectedState(''); setSelectedCounty(''); setQuery(''); setSelected(null); setSelectedFact(null) }}>RESET FILTERS</button>
       </div>
       <div className="explorer-grid">
         <aside className={`places-panel ${placesOpen ? "mobile-open" : ""}`}>
@@ -165,7 +177,7 @@ export default function App() {
             {loading && <div className="state-message"><LoaderCircle className="spin" size={20} />{t.loading}</div>}
             {error && <div className="error-message">{error}</div>}
             {!loading && !error && filtered.length === 0 && <div className="state-message">{t.empty}</div>}
-            {filtered.map(p => <button key={p.id} className={'place-row ' + (selected?.id === p.id ? 'selected' : '')} onClick={() => { setSelected(p); setPlacesOpen(false) }}>
+            {filtered.map(p => <button key={p.id} className={'place-row ' + (selected?.id === p.id ? 'selected' : '')} onClick={() => { setSelected(p); setSelectedFact(null); setPlacesOpen(false) }}>
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
@@ -176,18 +188,18 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? 'GERMANY' : 'CZECHIA'} / EXPLORATION MAP</span><span>{factPinCount.toLocaleString()} FACT PINS · {filtered.length.toLocaleString()} AREAS</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} places={filtered} />
-            <FactClusterLayer places={filtered} lang={lang} onSelect={setSelected} />
+            <MapFocus place={selected} selectedFact={selectedFact} places={filtered} />
+            <FactClusterLayer places={filtered} lang={lang} onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> FACT LOCATION <span className="legend-line" /> CLUSTERS MERGE ON ZOOM-OUT</div>
         </div>
 
         <aside className={`detail-panel ${selected ? "has-selection" : ""}`}>
           {selected ? <>
-            <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">LOCAL DISCOVERY</span><span className="image-coords">{selectedPoint?.lat?.toFixed(3)}, {selectedPoint?.lon?.toFixed(3)}</span></div>
-            <div className="detail-content"><div className="detail-kicker">POSTAL AREA / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{facts.length.toString().padStart(2, '0')}</span></div>
+            <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">{selectedFact ? 'PIN DISCOVERY' : 'LOCAL DISCOVERY'}</span><span className="image-coords">{selectedPoint?.lat?.toFixed(3)}, {selectedPoint?.lon?.toFixed(3)}</span></div>
+            <div className="detail-content"><div className="detail-kicker">{selectedFact ? 'PIN DISCOVERY' : 'POSTAL AREA'} / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{facts.length.toString().padStart(2, '0')}</span></div>
               {facts.length ? <div className="fact-list">{facts.map((f, i) => <article className="fact" key={f.id || i}><span className="fact-index">{String(i + 1).padStart(2, '0')}</span><div><h4>{f.title || f.name || 'Discover this place'}</h4><p>{f.text || f.description || ''}</p><span className="fact-category">{(f.category || 'DISCOVERY').replaceAll('_', ' ').toUpperCase()}</span></div></article>)}</div> : <p className="detail-location">No published highlights are available for this area yet.</p>}
-            </div><button className="close-detail" onClick={() => setSelected(null)} aria-label="Close details"><X size={16} /></button>
+            </div><button className="close-detail" onClick={() => { setSelected(null); setSelectedFact(null) }} aria-label="Close details"><X size={16} /></button>
           </> : <div className="empty-detail"><div className="empty-icon"><MapPin size={26} /></div><span>YOUR NEXT DISCOVERY</span><h3>{t.choose}</h3><p>{t.note}</p></div>}
         </aside>
       </div>
