@@ -158,7 +158,7 @@ export default function App() {
     <header className="topbar">
       <a className="brand" href="#"><span className="brand-mark"><Compass size={20} /></span><span>EUROPE<span className="brand-light">EXPLORER</span></span></a>
       <div className="top-actions">
-        <span className="live-dot" /><span className="top-caption">DISCOVER THE UNEXPECTED</span>
+        <span className="live-dot" /><span className="top-caption">{u.tagline}</span>
         <div className={`language-switch ${menuOpen ? "menu-visible" : ""}`}>{LANGS.map(l => <button key={l.id} className={lang === l.id ? "active" : ""} onClick={() => { setLang(l.id); setMenuOpen(false) }}>{l.label}</button>)}</div><button className="menu-toggle" onClick={() => setMenuOpen(v => !v)} aria-label={menuOpen ? u.closeMenu : u.openMenu} aria-expanded={menuOpen}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
       </div>
     </header>
