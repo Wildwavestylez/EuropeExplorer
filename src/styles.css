@@ -21,3 +21,8 @@
 .filter-reset{height:39px;padding:0 13px;border:1px solid #405365;border-radius:3px;background:transparent;color:#aebbc2;font:9px 'DM Mono',monospace;letter-spacing:.7px;cursor:pointer}
 .filter-reset:hover{border-color:#f2a65a;color:#f2a65a}
 @media(max-width:700px){.filter-bar{display:grid;grid-template-columns:1fr;gap:10px;padding:12px}.filter-field{min-width:0}.filter-reset{width:100%}}
+
+/* Category-specific emoji map pins */
+.fact-pin-icon{background:transparent;border:0}
+.fact-pin-emoji{display:flex;align-items:center;justify-content:center;width:30px;height:34px;font-size:25px;line-height:1;filter:drop-shadow(0 2px 2px #101c2bcc);transform-origin:50% 85%}
+.fact-pin-icon:hover .fact-pin-emoji{transform:scale(1.18)}
