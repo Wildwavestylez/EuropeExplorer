@@ -5,7 +5,18 @@ import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
-const MAP_CATEGORY = {\n  castle: '🏰',\n  historical_monument: '🏛️',\n  nature: '🌲',\n  viewpoint_landscape: '🏞️',\n  historic_city: '🏙️',\n  museum: '🏺',\n  religious_site: '⛪',\n  technical_heritage: '🏗️',\n}\n\nfunction localizedTitle(place, fact, lang) {
+const MAP_CATEGORY = {
+  castle: '🏰',
+  historical_monument: '🏛️',
+  nature: '🌲',
+  viewpoint_landscape: '🏞️',
+  historic_city: '🏙️',
+  museum: '🏺',
+  religious_site: '⛪',
+  technical_heritage: '🏗️',
+}
+
+function localizedTitle(place, fact, lang) {
   const translated = place.content?.translations?.[lang]?.facts?.find(item => item.id === fact.id)
   return translated?.title || fact.title || fact.id
 }
