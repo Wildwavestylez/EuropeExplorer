@@ -9,6 +9,21 @@ const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' },
 ]
+
+function getInitialLanguage() {
+  const supported = LANGS.map(language => language.id)
+  try {
+    const saved = window.localStorage.getItem('europe-explorer-language')
+    if (saved && supported.includes(saved)) return saved
+  } catch {}
+  const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language]
+  for (const browserLanguage of browserLanguages) {
+    const code = String(browserLanguage || '').toLowerCase().split('-')[0]
+    if (supported.includes(code)) return code
+  }
+  return 'en'
+}
+
 const copy = {
   en: { eyebrow: 'A continent to discover', title: 'Europe, one place at a time.', subtitle: 'Explore local stories, places and hidden highlights.', search: 'Search places or postal codes', all: 'All places', results: 'published areas', explore: 'Explore the map', details: 'Local highlights', loading: 'Discovering places…', empty: 'No matching places found.', choose: 'Select a place on the map or from the list.', source: 'Explore by postal area', note: 'Map markers show the representative point of each postal area.' },
   de: { eyebrow: 'Ein Kontinent zum Entdecken', title: 'Europa. Ort für Ort.', subtitle: 'Entdecke lokale Geschichten, Orte und besondere Highlights.', search: 'Orte oder Postleitzahl suchen', all: 'Alle Orte', results: 'veröffentlichte Gebiete', explore: 'Karte entdecken', details: 'Lokale Highlights', loading: 'Orte werden geladen…', empty: 'Keine passenden Orte gefunden.', choose: 'Wähle einen Ort auf der Karte oder aus der Liste.', source: 'Entdecken nach Postleitzahl', note: 'Die Kartenmarkierungen zeigen den repräsentativen Punkt des Postleitzahlgebiets.' },
@@ -86,7 +101,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [lang, setLang] = useState('en')
+  const [lang, setLang] = useState(getInitialLanguage)
   const [selected, setSelected] = useState(null)
   const [selectedFact, setSelectedFact] = useState(null)
   const [country, setCountry] = useState('DE')
@@ -95,6 +110,10 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [placesOpen, setPlacesOpen] = useState(false)
+  useEffect(() => {
+    try { window.localStorage.setItem('europe-explorer-language', lang) } catch {}
+  }, [lang])
+
   const t = copy[lang] || copy.en
   const u = uiCopy[lang] || uiCopy.en
 
