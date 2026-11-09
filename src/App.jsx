@@ -258,15 +258,17 @@ export default function App() {
         </aside>
       </div>
     </section>
-    {country === 'DE' && loadDiagnostics?.country === 'DE' && <section style={{ margin: '24px auto', padding: '18px', maxWidth: '1200px', border: '1px solid #d6d3d1', borderRadius: '12px', background: '#fff', color: '#292524', fontSize: '13px' }}>
-      <details open>
-        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '14px' }}>TEMPORARY DATA DIAGNOSTICS · GERMANY</summary>
-        <p style={{ margin: '12px 0 6px' }}>Supabase rows fetched: <strong>{loadDiagnostics.fetched}</strong> · Passed V3 validation: <strong>{loadDiagnostics.accepted}</strong> · Rejected: <strong>{loadDiagnostics.rejected.length}</strong></p>
-        <p style={{ margin: '0 0 12px' }}>Pages fetched: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize}</p>
-        {loadDiagnostics.rejected.length === 0 ? <p>No records were rejected by the Explorer V3 validator.</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.postal_code || index} style={{ marginBottom: '10px' }}>
-          <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
-          <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>{record.reasons.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul>
-        </li>)}</ol>}
+    {country === 'DE' && loadDiagnostics?.country === 'DE' && <section style={{ margin: '8px auto 16px', padding: '0 12px', maxWidth: '1200px', color: '#78716c', fontSize: '11px' }}>
+      <details>
+        <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika</summary>
+        <div style={{ marginTop: '12px', padding: '16px', border: '1px solid #d6d3d1', borderRadius: '10px', background: '#fff', color: '#292524', fontSize: '13px' }}>
+          <p style={{ margin: '0 0 6px' }}>Supabase rows fetched: <strong>{loadDiagnostics.fetched}</strong> · Passed V3 validation: <strong>{loadDiagnostics.accepted}</strong> · Rejected: <strong>{loadDiagnostics.rejected.length}</strong></p>
+          <p style={{ margin: '0 0 12px' }}>Pages fetched: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize}</p>
+          {loadDiagnostics.rejected.length === 0 ? <p>No records were rejected by the Explorer V3 validator.</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.postal_code || index} style={{ marginBottom: '10px' }}>
+            <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
+            <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>{record.reasons.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul>
+          </li>)}</ol>}
+        </div>
       </details>
     </section>}
     <footer><span>EUROPE EXPLORER</span><span>{u.footer}</span><span>© 2026</span></footer>
