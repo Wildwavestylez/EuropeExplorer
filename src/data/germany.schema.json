@@ -377,26 +377,8 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "building",
-            "monument",
-            "infrastructure",
-            "natural_feature",
-            "landscape_area",
-            "archaeological_site",
-            "historical_site",
-            "event_location",
-            "other",
-            "postal_area",
-            "historic_city",
-            "historical_monument",
-            "technical_heritage",
-            "nature",
-            "religious_site",
-            "museum",
-            "transport"
-          ],
-          "description": "postal_area = postcode-level representative placement used when a fact is genuinely associated with the postal-code area but has no single defensible physical point."
+          "minLength": 1,
+          "description": "Specific location type used by the source content. This remains open-ended so new verified place types in TRAVEL data do not cause an entire postcode record to be rejected."
         },
         "accuracy": {
           "type": "string",
