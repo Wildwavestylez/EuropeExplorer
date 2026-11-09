@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter } from 'lucide-react'
 import { supabase } from './lib/supabase'
-import { isV3Record } from './lib/v3'
+import { getV3RecordRejectionReasons } from './lib/v3'
 import FactClusterLayer from './components/FactClusterLayer'
 
 const LANGS = [
@@ -98,6 +98,7 @@ function getCounty(place) {
 
 export default function App() {
   const [places, setPlaces] = useState([])
+  const [loadDiagnostics, setLoadDiagnostics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
@@ -130,6 +131,7 @@ export default function App() {
         const pageSize = 800
         let from = 0
         let all = []
+        let pageCount = 0
         while (true) {
           const { data, error } = await supabase
             .from('postal_codes')
@@ -139,11 +141,23 @@ export default function App() {
             .order('postal_code')
             .range(from, from + pageSize - 1)
           if (error) throw error
-          all = all.concat(data || [])
-          if (!data || data.length < pageSize) break
+          const page = data || []
+          pageCount += 1
+          all = all.concat(page)
+          if (page.length < pageSize) break
           from += pageSize
         }
-        if (alive) setPlaces(all.filter(p => isV3Record(p.content, country)))
+        const rejected = []
+        const accepted = []
+        all.forEach(record => {
+          const reasons = getV3RecordRejectionReasons(record.content, country)
+          if (reasons.length) rejected.push({ postal_code: record.postal_code, city: record.city, reasons })
+          else accepted.push(record)
+        })
+        if (alive) {
+          setPlaces(accepted)
+          setLoadDiagnostics({ country, fetched: all.length, accepted: accepted.length, rejected, pageCount, pageSize })
+        }
       } catch (e) {
         if (alive) setError(e.message || u.error)
       } finally {
@@ -244,6 +258,17 @@ export default function App() {
         </aside>
       </div>
     </section>
+    {country === 'DE' && loadDiagnostics?.country === 'DE' && <section style={{ margin: '24px auto', padding: '18px', maxWidth: '1200px', border: '1px solid #d6d3d1', borderRadius: '12px', background: '#fff', color: '#292524', fontSize: '13px' }}>
+      <details open>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '14px' }}>TEMPORARY DATA DIAGNOSTICS · GERMANY</summary>
+        <p style={{ margin: '12px 0 6px' }}>Supabase rows fetched: <strong>{loadDiagnostics.fetched}</strong> · Passed V3 validation: <strong>{loadDiagnostics.accepted}</strong> · Rejected: <strong>{loadDiagnostics.rejected.length}</strong></p>
+        <p style={{ margin: '0 0 12px' }}>Pages fetched: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize}</p>
+        {loadDiagnostics.rejected.length === 0 ? <p>No records were rejected by the Explorer V3 validator.</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.postal_code || index} style={{ marginBottom: '10px' }}>
+          <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
+          <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>{record.reasons.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul>
+        </li>)}</ol>}
+      </details>
+    </section>}
     <footer><span>EUROPE EXPLORER</span><span>{u.footer}</span><span>© 2026</span></footer>
   </main>
 }
