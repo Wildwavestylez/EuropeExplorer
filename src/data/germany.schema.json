@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TRAVEL German postcode stop — Content Standard V3",
-  "description": "Content Standard V3 schema, including explicit fact-level map categories for consistent tourist map iconography.",
+  "title": "TRAVEL German postcode stop — Content Standard V3.1",
+  "description": "Content Standard V3.1 schema, including explicit fact-level map categories and legacy compatibility for records without map_category.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -189,8 +189,7 @@
         "text",
         "category",
         "priority",
-        "sources",
-        "map_category"
+        "sources"
       ],
       "properties": {
         "id": {
@@ -258,9 +257,10 @@
             "historic_city",
             "museum",
             "religious_site",
-            "technical_heritage"
+            "technical_heritage",
+            "personality"
           ],
-          "description": "Single primary map category for the specific subject of this fact. Used only for map iconography; the existing category field retains its broader editorial meaning."
+          "description": "Optional for legacy records. When present, single primary map category for the specific subject of this fact; personality identifies person-centred facts."
         }
       }
     },
@@ -409,5 +409,5 @@
       }
     }
   },
-  "$comment": "CONTENT STANDARD V3: every fact has one required map_category for consistent map iconography. Existing category remains the broader editorial classification. representative_point, access_point and facts[].location are separate and not interchangeable. A postal_area fact location may intentionally reuse representative_point with type=postal_area and accuracy=area_representative."
+  "$comment": "CONTENT STANDARD V3.1: every newly enriched fact should have one map_category. Legacy published records without map_category remain displayable; the interface falls back to the existing editorial category. personality identifies person-centred facts independently of their physical pin location."
 }
