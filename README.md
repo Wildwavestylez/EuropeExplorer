@@ -25,3 +25,4 @@ GitHub Actions builds the Vite app and deploys it to GitHub Pages on every push 
 The repository Pages setting must use **GitHub Actions** as its build and deployment source.
 
 Public URL: https://wildwavestylez.github.io/EuropeExplorer/
+
