@@ -387,7 +387,14 @@
             "historical_site",
             "event_location",
             "other",
-            "postal_area"
+            "postal_area",
+            "historic_city",
+            "historical_monument",
+            "technical_heritage",
+            "nature",
+            "religious_site",
+            "museum",
+            "transport"
           ],
           "description": "postal_area = postcode-level representative placement used when a fact is genuinely associated with the postal-code area but has no single defensible physical point."
         },
