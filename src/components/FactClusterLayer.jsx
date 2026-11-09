@@ -5,18 +5,6 @@ import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
-const MAP_CATEGORY = {
-  castle: '🏰',
-  historical_monument: '🏛️',
-  nature: '🌲',
-  viewpoint_landscape: '🏞️',
-  historic_city: '🏙️',
-  museum: '🏺',
-  religious_site: '⛪',
-  technical_heritage: '🏗️',
-  personality: '👤',
-}
-
 function localizedTitle(place, fact, lang) {
   const translated = place.content?.translations?.[lang]?.facts?.find(item => item.id === fact.id)
   return translated?.title || fact.title || fact.id
@@ -29,6 +17,15 @@ const categoryLabels = {
   es: { castle:'Castillo', historical_monument:'Monumento histórico', nature:'Naturaleza', viewpoint_landscape:'Mirador / paisaje', historic_city:'Ciudad histórica', museum:'Museo', religious_site:'Lugar religioso', technical_heritage:'Patrimonio técnico', personality:'Personalidad' },
   fr: { castle:'Château', historical_monument:'Monument historique', nature:'Nature', viewpoint_landscape:'Belvédère / paysage', historic_city:'Ville historique', museum:'Musée', religious_site:'Site religieux', technical_heritage:'Patrimoine technique', personality:'Personnalité' },
   it: { castle:'Castello', historical_monument:'Monumento storico', nature:'Natura', viewpoint_landscape:'Belvedere / paesaggio', historic_city:'Città storica', museum:'Museo', religious_site:'Luogo religioso', technical_heritage:'Patrimonio tecnico', personality:'Personalità' },
+}
+
+const dragLabels = {
+  en: { hint:'DRAG UP TO READ MORE', expanded:'DRAG DOWN TO COLLAPSE' },
+  de: { hint:'NACH OBEN ZIEHEN FÜR MEHR', expanded:'NACH UNTEN ZIEHEN ZUM SCHLIESSEN' },
+  cs: { hint:'TAŽENÍM NAHORU ZOBRAZÍŠ VÍCE', expanded:'TAŽENÍM DOLŮ SBALÍŠ' },
+  es: { hint:'DESLIZA HACIA ARRIBA PARA LEER MÁS', expanded:'DESLIZA HACIA ABAJO PARA CERRAR' },
+  fr: { hint:'FAITES GLISSER VERS LE HAUT POUR LIRE', expanded:'FAITES GLISSER VERS LE BAS POUR RÉDUIRE' },
+  it: { hint:'TRASCINA IN ALTO PER LEGGERE DI PIÙ', expanded:'TRASCINA IN BASSO PER RIDURRE' },
 }
 
 export default function FactClusterLayer({ places, lang, onSelectFact }) {
@@ -60,18 +57,87 @@ export default function FactClusterLayer({ places, lang, onSelectFact }) {
           title: localizedTitle(place, fact, lang),
           riseOnHover: true,
         })
-        const popup = document.createElement('div')
-        const title = document.createElement('strong')
-        title.textContent = localizedTitle(place, fact, lang)
-        const summary = document.createElement('p')
+
         const translated = place.content?.translations?.[lang]?.facts?.find(item => item.id === fact.id)
-        summary.textContent = translated?.text || translated?.description || fact.text || fact.description || ''
+        const popup = document.createElement('div')
+        popup.className = 'fact-popup-card'
+
+        const heading = document.createElement('div')
+        heading.className = 'fact-popup-heading'
+        const title = document.createElement('strong')
+        title.className = 'fact-popup-title'
+        title.textContent = localizedTitle(place, fact, lang)
         const subtitle = document.createElement('div')
+        subtitle.className = 'fact-popup-subtitle'
         subtitle.textContent = [place.postal_code, point.name, place.city].filter(Boolean).join(' · ')
+        heading.append(title, subtitle)
+
+        const summary = document.createElement('div')
+        summary.className = 'fact-popup-summary'
+        summary.textContent = translated?.text || translated?.description || fact.text || fact.description || ''
+
         const category = document.createElement('small')
+        category.className = 'fact-popup-category'
         category.textContent = categoryLabels[lang]?.[fact.map_category] || (fact.category || 'Discovery').replaceAll('_', ' ')
-        popup.append(title, summary, subtitle, category)
-        marker.bindPopup(popup)
+
+        const handle = document.createElement('button')
+        handle.type = 'button'
+        handle.className = 'fact-popup-handle'
+        handle.setAttribute('aria-label', dragLabels[lang]?.hint || dragLabels.en.hint)
+        const grip = document.createElement('span')
+        grip.className = 'fact-popup-grip'
+        const hint = document.createElement('span')
+        hint.className = 'fact-popup-hint'
+        hint.textContent = dragLabels[lang]?.hint || dragLabels.en.hint
+        handle.append(grip, hint)
+
+        popup.append(heading, summary, category, handle)
+
+        let expanded = false
+        let startY = null
+        let dragged = false
+        const setExpanded = value => {
+          expanded = value
+          popup.classList.toggle('is-expanded', expanded)
+          hint.textContent = expanded
+            ? (dragLabels[lang]?.expanded || dragLabels.en.expanded)
+            : (dragLabels[lang]?.hint || dragLabels.en.hint)
+          handle.setAttribute('aria-label', hint.textContent)
+        }
+        handle.addEventListener('pointerdown', event => {
+          startY = event.clientY
+          dragged = false
+          handle.setPointerCapture?.(event.pointerId)
+          event.preventDefault()
+        })
+        handle.addEventListener('pointermove', event => {
+          if (startY === null) return
+          const delta = event.clientY - startY
+          if (Math.abs(delta) > 8) dragged = true
+        })
+        handle.addEventListener('pointerup', event => {
+          if (startY === null) return
+          const delta = event.clientY - startY
+          if (Math.abs(delta) > 18) setExpanded(delta < 0)
+          else if (!dragged) setExpanded(!expanded)
+          startY = null
+        })
+        handle.addEventListener('pointercancel', () => { startY = null })
+        handle.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setExpanded(!expanded)
+          }
+        })
+
+        marker.bindPopup(popup, {
+          className: 'fact-map-popup',
+          minWidth: 280,
+          maxWidth: 280,
+          closeButton: true,
+          autoPan: false,
+          keepInView: false,
+        })
         marker.on('click', () => onSelectFact(place, fact))
         cluster.addLayer(marker)
       })
