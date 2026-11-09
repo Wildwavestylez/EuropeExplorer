@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter } from 'lucide-react'
 import { supabase } from './lib/supabase'
@@ -111,6 +111,8 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [placesOpen, setPlacesOpen] = useState(false)
+  const [factSheetExpanded, setFactSheetExpanded] = useState(false)
+  const factSheetDragStart = useRef(null)
   useEffect(() => {
     try { window.localStorage.setItem('europe-explorer-language', lang) } catch {}
   }, [lang])
@@ -121,6 +123,7 @@ export default function App() {
   const handleFactSelect = useCallback((place, fact) => {
     setSelected(place)
     setSelectedFact(fact)
+    setFactSheetExpanded(false)
   }, [])
 
   useEffect(() => {
@@ -188,6 +191,7 @@ export default function App() {
   const facts = selectedFact
     ? localizedFacts.filter(fact => fact.id === selectedFact.id)
     : localizedFacts
+  const activeFact = facts[0] || null
   const selectedPoint = selected?.content?.representative_point
   const center = Number.isFinite(selectedPoint?.lat) && Number.isFinite(selectedPoint?.lon)
     ? [selectedPoint.lat, selectedPoint.lon] : [51.1657, 10.4515]
@@ -258,6 +262,18 @@ export default function App() {
         </aside>
       </div>
     </section>
+    {selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
+      <div className="fact-screen-sheet-heading">
+        <div className="fact-screen-sheet-title">{activeFact.title || activeFact.name || u.discover}</div>
+        <button className="fact-screen-sheet-close" onClick={() => { setSelectedFact(null); setFactSheetExpanded(false) }} aria-label={u.closeDetails}><X size={18} /></button>
+        <div className="fact-screen-sheet-subtitle">{[selected?.postal_code, activeFact.location?.name, selected?.city].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div className="fact-screen-sheet-body">{activeFact.text || activeFact.description || ''}</div>
+      <div className="fact-screen-sheet-category">{(mapCategoryCopy[lang]?.[activeFact.map_category] || activeFact.category || 'Discovery').toUpperCase()}</div>
+      <button className="fact-screen-sheet-handle" onPointerDown={event => { factSheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture?.(event.pointerId) }} onPointerUp={event => { if (factSheetDragStart.current === null) return; const delta = event.clientY - factSheetDragStart.current; setFactSheetExpanded(Math.abs(delta) > 12 ? delta < 0 : !factSheetExpanded); factSheetDragStart.current = null }} onPointerCancel={() => { factSheetDragStart.current = null }} onClick={() => {}} aria-label={factSheetExpanded ? 'Collapse fact' : 'Expand fact'}>
+        <span className="fact-screen-sheet-grip" /><span>{factSheetExpanded ? (lang === 'cs' ? 'TAŽENÍM DOLŮ SBALÍŠ' : 'DRAG DOWN TO COLLAPSE') : (lang === 'cs' ? 'TAŽENÍM NAHORU ZOBRAZÍŠ VÍCE' : 'DRAG UP TO READ MORE')}</span>
+      </button>
+    </section>}
     {country === 'DE' && loadDiagnostics?.country === 'DE' && <section style={{ margin: '8px auto 16px', padding: '0 12px', maxWidth: '1200px', color: '#78716c', fontSize: '11px' }}>
       <details>
         <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika</summary>
