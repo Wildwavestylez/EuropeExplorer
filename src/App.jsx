@@ -203,7 +203,7 @@ export default function App() {
   const activeFact = facts[0] || null
   const center = selected && Number.isFinite(selected.latitude) && Number.isFinite(selected.longitude)
     ? [selected.latitude, selected.longitude] : [51.1657, 10.4515]
-  const factPinCount = null
+  const selectedPoint = selected?.content?.representative_point || (selected ? { lat: selected.latitude, lon: selected.longitude } : null)
 
   return <main className="app-shell">
     <header className="topbar">
