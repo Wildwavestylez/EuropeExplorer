@@ -186,9 +186,17 @@ export default function App() {
           // Keep diagnostic requests small: the view runs full JSON-schema checks
           // and large pages can exceed Supabase's statement timeout.
           const diagnosticsPageSize = 50
+          const { count: publishedCount, error: countError } = await supabase
+            .from('postal_codes')
+            .select('id', { count: 'exact', head: true })
+            .eq('country_code', 'DE')
+            .eq('status', 'published')
+          if (countError) throw countError
           let diagnosticFrom = 0
           let rejected = []
-          while (true) {
+          // The RPC paginates SOURCE published rows, then returns only rejected ones.
+          // Therefore an empty/short result page does not mean the source has ended.
+          while (diagnosticFrom < (publishedCount || 0)) {
             const { data: diagnosticPage, error: diagnosticError } = await supabase
               .rpc('get_postal_code_diagnostics_page', {
                 p_offset: diagnosticFrom,
@@ -200,11 +208,10 @@ export default function App() {
               ...record,
               reasons: Array.isArray(record.reasons) ? record.reasons : [],
             })))
-            if (page.length < diagnosticsPageSize) break
             diagnosticFrom += diagnosticsPageSize
           }
           if (alive) setLoadDiagnostics({
-            country, fetched: all.length + rejected.length, accepted: all.length,
+            country, fetched: publishedCount || 0, accepted: all.length,
             rejected, pageCount, pageSize, diagnosticsError: '',
           })
         } catch (diagnosticError) {
