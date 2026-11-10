@@ -69,8 +69,11 @@ function factCoordinates(place) {
 function MapFocus({ place, selectedFact }) {
   const map = useMap()
   useEffect(() => {
-    if (selectedFact) return
-    if (place && Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
+    const factLat = Number(selectedFact?.location?.lat)
+    const factLon = Number(selectedFact?.location?.lon)
+    if (selectedFact && Number.isFinite(factLat) && Number.isFinite(factLon)) {
+      map.flyTo([factLat, factLon], 13, { duration: 0.8 })
+    } else if (place && Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
       map.flyTo([place.latitude, place.longitude], 12, { duration: 0.8 })
     } else if (!place) {
       map.setView([51.1657, 10.4515], 6, { animate: true })
@@ -265,31 +268,52 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : 'Finding a random discovery…')
     try {
-      const { count, error: countError } = await supabase.from('postal_codes').select('id', { count: 'exact', head: true }).eq('status', 'published')
+      // The map index contains one row per published fact with valid GPS coordinates.
+      // Sampling this table makes every eligible fact equally likely, regardless of
+      // how many facts happen to belong to its postal-code record.
+      const { count, error: countError } = await supabase
+        .from('explorer_map_points')
+        .select('postal_id', { count: 'exact', head: true })
       if (countError) throw countError
-      if (!count) throw new Error('No published places')
-      let pick = null
-      // Sample random published records across the complete table, not just the first page.
-      for (let attempt = 0; attempt < 20 && !pick; attempt += 1) {
-        const offset = Math.floor(Math.random() * count)
-        const { data, error } = await supabase.from('postal_codes')
-          .select('id,country_code,postal_code,city,latitude,longitude,content')
-          .eq('status', 'published').range(offset, offset)
-        if (error) throw error
-        const place = data?.[0]
-        const facts = (place?.content?.facts || []).filter(fact =>
-          Number.isFinite(fact.location?.lat) && Number.isFinite(fact.location?.lon)
-          && fact.location.lat >= -90 && fact.location.lat <= 90
-          && fact.location.lon >= -180 && fact.location.lon <= 180)
-        if (place && facts.length) pick = { place, fact: facts[Math.floor(Math.random() * facts.length)] }
+      if (!count) throw new Error('No published facts with coordinates')
+
+      const offset = Math.floor(Math.random() * count)
+      const { data: mapFacts, error: pickError } = await supabase
+        .from('explorer_map_points')
+        .select('postal_id,country_code,postal_code,city,fact_id,lat,lon')
+        .range(offset, offset)
+      if (pickError) throw pickError
+      const mapFact = mapFacts?.[0]
+      if (!mapFact) throw new Error('Random fact could not be selected')
+
+      const { data: place, error: placeError } = await supabase
+        .from('postal_codes')
+        .select('id,country_code,postal_code,city,municipality,district,region,county,latitude,longitude,content')
+        .eq('id', mapFact.postal_id)
+        .eq('status', 'published')
+        .single()
+      if (placeError) throw placeError
+
+      const fact = (place.content?.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
+      if (!fact) throw new Error('Selected fact is no longer available in its published record')
+
+      const selectedPlace = {
+        ...place,
+        latitude: mapFact.lat,
+        longitude: mapFact.lon,
       }
-      if (!pick) throw new Error('No published facts with coordinates')
-      const place = pick.place
       setCountry(place.country_code || 'DE')
-      setMapStart([pick.fact.location.lat, pick.fact.location.lon])
-      setSelected({ ...place, latitude: place.latitude || pick.fact.location.lat, longitude: place.longitude || pick.fact.location.lon })
-      setSelectedFact(pick.fact); setActiveMode('real'); setFactSheetOpen(true); setIntroMessage('')
-    } catch (e) { console.error('Real Explorer failed:', e); setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : 'Could not load a random discovery. Please try again.') }
+      setMapStart([mapFact.lat, mapFact.lon])
+      setSelected(selectedPlace)
+      setSelectedFact(fact)
+      setActiveMode('real')
+      setFactSheetExpanded(false)
+      setFactSheetOpen(true)
+      setIntroMessage('')
+    } catch (e) {
+      console.error('Real Explorer failed:', e)
+      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : 'Could not load a random discovery. Please try again.')
+    }
   }
 
   const stateOptions = useMemo(() => [...new Set(places.map(getState).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [places])
