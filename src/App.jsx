@@ -212,6 +212,7 @@ export default function App() {
     setQuery('')
     setSelected(null)
     setSelectedFact(null)
+    setRandomFocusPoint(null)
     setFactSheetOpen(false)
     setMapStart([51.1657, 10.4515])
     setActiveMode('area')
@@ -230,6 +231,7 @@ export default function App() {
       return
     }
     setSelected({ ...place, content: data.content })
+    setRandomFocusPoint(null)
     setSelectedFact(null)
   }, [])
 
