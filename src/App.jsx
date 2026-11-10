@@ -90,6 +90,10 @@ function getCounty(place) {
 
 export default function App() {
   const [places, setPlaces] = useState([])
+  const [activeMode, setActiveMode] = useState('')
+  const [introSearch, setIntroSearch] = useState('')
+  const [introMessage, setIntroMessage] = useState('')
+  const [mapStart, setMapStart] = useState([51.1657, 10.4515])
   const [loadDiagnostics, setLoadDiagnostics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -144,6 +148,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!activeMode) { setLoading(false); return }
     let alive = true
     async function load() {
       const pageSize = 800
@@ -228,7 +233,50 @@ export default function App() {
     }
     load()
     return () => { alive = false }
-  }, [country])
+  }, [country, activeMode])
+
+  const startWithLocation = () => {
+    setIntroMessage('')
+    if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : 'Location is not available on this device.'); return }
+    setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : 'Waiting for location permission…')
+    navigator.geolocation.getCurrentPosition(position => {
+      setMapStart([position.coords.latitude, position.coords.longitude])
+      setSelected(null); setSelectedFact(null); setActiveMode('location')
+      setIntroMessage('')
+    }, () => setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : 'Could not get your location. Check GPS permissions.'), { enableHighAccuracy: true, timeout: 12000 })
+  }
+
+  const searchIntroPlace = async (event) => {
+    event.preventDefault()
+    const term = introSearch.trim()
+    if (!term) return
+    setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : 'Searching for place…')
+    try {
+      const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&limit=1&lang=${lang}`)
+      if (!response.ok) throw new Error('Search failed')
+      const result = await response.json()
+      const feature = result.features?.[0]
+      if (!feature) { setIntroMessage(lang === 'cs' ? 'Místo se nepodařilo najít.' : 'Place not found.'); return }
+      const [lon, lat] = feature.geometry.coordinates
+      setMapStart([lat, lon]); setSelected(null); setSelectedFact(null); setActiveMode('search'); setIntroMessage('')
+    } catch { setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : 'Search failed. Please try again.') }
+  }
+
+  const startExplorer = async () => {
+    setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : 'Finding a random discovery…')
+    try {
+      const { data, error } = await supabase.from('postal_codes').select('id,country_code,postal_code,city,latitude,longitude,content', { count: 'exact' }).eq('status', 'published').not('content', 'is', null).limit(1000)
+      if (error) throw error
+      const candidates = (data || []).flatMap(place => (place.content?.facts || []).filter(fact => Number.isFinite(fact.location?.lat) && Number.isFinite(fact.location?.lon)).map(fact => ({ place, fact })))
+      if (!candidates.length) throw new Error('No published facts with coordinates')
+      const pick = candidates[Math.floor(Math.random() * candidates.length)]
+      const place = pick.place
+      setCountry(place.country_code || 'DE')
+      setMapStart([pick.fact.location.lat, pick.fact.location.lon])
+      setSelected({ ...place, latitude: place.latitude || pick.fact.location.lat, longitude: place.longitude || pick.fact.location.lon })
+      setSelectedFact(pick.fact); setActiveMode('real'); setFactSheetOpen(true); setIntroMessage('')
+    } catch (e) { console.error('Real Explorer failed:', e); setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : 'Could not load a random discovery. Please try again.') }
+  }
 
   const stateOptions = useMemo(() => [...new Set(places.map(getState).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [places])
   const countyOptions = useMemo(() => [...new Set(places
@@ -252,10 +300,10 @@ export default function App() {
     : localizedFacts
   const activeFact = facts[0] || null
   const center = selected && Number.isFinite(selected.latitude) && Number.isFinite(selected.longitude)
-    ? [selected.latitude, selected.longitude] : [51.1657, 10.4515]
+    ? [selected.latitude, selected.longitude] : mapStart
   const selectedPoint = selected?.content?.representative_point || (selected ? { lat: selected.latitude, lon: selected.longitude } : null)
 
-  return <main className="app-shell">
+  return <main className={`app-shell ${!activeMode ? 'intro-active' : ''}`}>
     <header className="topbar">
       <a className="brand" href="#"><span className="brand-mark"><Compass size={20} /></span><span>EUROPE<span className="brand-light">EXPLORER</span></span></a>
       <div className="top-actions">
@@ -264,6 +312,21 @@ export default function App() {
       </div>
     </header>
 
+    {!activeMode ? <section className="welcome-screen">
+      <div className="welcome-orbit" aria-hidden="true"><div className="welcome-globe"><span /><i /><b /></div><small>EUROPE / DISCOVER</small></div>
+      <div className="welcome-copy"><div className="eyebrow"><span />{lang === 'cs' ? 'EVROPA PLNÁ OBJEVŮ' : (copy[lang] || copy.en).eyebrow.toUpperCase()}</div>
+        <h1>{lang === 'cs' ? 'Kam se dnes podíváme?' : 'Where will you explore today?'}</h1>
+        <p>{lang === 'cs' ? 'Objevuj zajímavá místa, příběhy a skrytá zákoutí Evropy.' : 'Discover remarkable places, local stories and hidden corners of Europe.'}</p>
+      </div>
+      <div className="welcome-options">
+        <button className="welcome-option" onClick={startWithLocation}><span className="welcome-icon"><MapPin size={21}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={18}/></button>
+        <form className="welcome-option welcome-search" onSubmit={searchIntroPlace}><span className="welcome-icon"><Search size={21}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : 'Search for a place'}</strong><input value={introSearch} onChange={e => setIntroSearch(e.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : 'City, town or postal code…'} /></span><button type="submit" aria-label="Search"><ArrowUpRight size={18}/></button></form>
+        <button className="welcome-option" onClick={() => { setActiveMode('area'); setIntroMessage('') }}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
+        <button className="welcome-option welcome-real" onClick={startExplorer}><span className="welcome-icon"><Compass size={22}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={18}/></button>
+      </div>
+      {introMessage && <p className="welcome-message" role="status">{introMessage}</p>}
+      <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
+    </section> : <>
     <section className="hero">
       <div className="hero-copy">
         <div className="eyebrow"><span />{t.eyebrow}</div>
@@ -316,6 +379,7 @@ export default function App() {
         </aside>
       </div>
     </section>
+    </>}
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
       <div className="fact-screen-sheet-heading">
         <div className="fact-screen-sheet-title">{activeFact.title || activeFact.name || u.discover}</div>
