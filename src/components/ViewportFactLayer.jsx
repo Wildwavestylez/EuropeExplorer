@@ -35,7 +35,7 @@ function makeMarker(point, zoom) {
   })
 }
 
-export default function ViewportFactLayer({ country, onSelectFact }) {
+export default function ViewportFactLayer({ onSelectFact }) {
   const map = useMap()
   const cacheRef = useRef(new Map())
   const requestRef = useRef(null)
@@ -51,7 +51,7 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
     const north = Math.min(90, bounds.getNorth())
     const west = Math.max(-180, bounds.getWest())
     const east = Math.min(180, bounds.getEast())
-    const key = [country, zoom, south, west, north, east].map(v =>
+    const key = [zoom, south, west, north, east].map(v =>
       typeof v === 'number' ? v.toFixed(3) : v
     ).join(':')
 
@@ -60,8 +60,7 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
       requestRef.current?.abort()
       const controller = new AbortController()
       requestRef.current = controller
-      const { data, error } = await supabase.rpc('get_explorer_map_points', {
-        p_country_code: country,
+      const { data, error } = await supabase.rpc('get_explorer_map_points_v2', {
         p_south: south,
         p_west: west,
         p_north: north,
@@ -93,6 +92,7 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
         marker.on('click', () => {
           callbackRef.current?.({
             id: point.id,
+            country_code: point.country_code,
             postal_code: point.postal_code,
             city: point.city,
           }, {
