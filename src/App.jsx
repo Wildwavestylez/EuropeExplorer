@@ -532,6 +532,14 @@ export default function App() {
       {introMessage && <p className="welcome-message" role="status">{introMessage}</p>}
       <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
     </section> : <>
+    <section className="hero">
+      <div className="hero-copy">
+        <div className="eyebrow"><span />{t.eyebrow}</div>
+        <h1>{t.title}</h1>
+        <p>{t.subtitle}</p>
+      </div>
+      <div className="hero-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="globe"><div className="globe-grid" /><span className="globe-pin pin-a" /><span className="globe-pin pin-b" /><span className="globe-pin pin-c" /></div><span className="art-label label-a">51° 10′ N</span><span className="art-label label-b">EUROPE / 01</span></div>
+    </section>
     <section className="workspace">
       <div className="section-heading">
         <div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div>
