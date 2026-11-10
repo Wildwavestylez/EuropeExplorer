@@ -155,7 +155,6 @@ export default function App() {
           const { data, error } = await supabase
             .from('postal_codes_explorer_completed')
             .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude')
-            .eq('status', 'published')
             .eq('country_code', country)
             .order('postal_code')
             .range(from, from + pageSize - 1)
