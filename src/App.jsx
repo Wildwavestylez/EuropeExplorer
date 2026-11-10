@@ -71,8 +71,9 @@ function MapFocus({ place, selectedFact, mapStart, activeMode, areaPlaces }) {
   useEffect(() => {
     const factLat = Number(selectedFact?.location?.lat)
     const factLon = Number(selectedFact?.location?.lon)
-    if (selectedFact && Number.isFinite(factLat) && Number.isFinite(factLon)) {
-      map.flyTo([factLat, factLon], 13, { duration: 0.8 })
+    // Selecting a fact pin opens its details but must never change the user's map zoom or position.
+    if (selectedFact) {
+      return
     } else if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
     } else if (activeMode === 'area' && Array.isArray(areaPlaces)) {
