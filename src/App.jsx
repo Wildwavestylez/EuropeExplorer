@@ -546,9 +546,6 @@ export default function App() {
       <div className="hero-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="globe"><div className="globe-grid" /><span className="globe-pin pin-a" /><span className="globe-pin pin-b" /><span className="globe-pin pin-c" /></div><span className="art-label label-a">51° 10′ N</span><span className="art-label label-b">EUROPE / 01</span></div>
     </section>
     <section className="workspace">
-      <div className="section-heading">
-        <div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div>
-      </div>
       <div className="explorer-grid">
         <aside className={`places-panel ${placesOpen ? "mobile-open" : ""}`}>
           <div className="panel-head"><span>{t.all}</span><span className="count">{filtered.length}</span></div>
