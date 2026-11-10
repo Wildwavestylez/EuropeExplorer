@@ -81,9 +81,9 @@ function MapFocus({ place, selectedFact, mapStart, activeMode, areaPlaces }) {
         .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)
           && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
       if (points.length === 1) {
-        map.flyTo(points[0], 10, { duration: 0.8 })
+        map.flyTo(points[0], 12, { duration: 0.8 })
       } else if (points.length > 1) {
-        map.flyToBounds(points, { padding: [36, 36], maxZoom: 9, duration: 0.9 })
+        map.flyToBounds(points, { padding: [48, 48], maxZoom: 13, duration: 0.9 })
       } else if (Array.isArray(mapStart) && mapStart.length === 2) {
         map.flyTo([Number(mapStart[0]), Number(mapStart[1])], 6, { duration: 0.8 })
       }
