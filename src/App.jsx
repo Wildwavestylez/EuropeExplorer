@@ -288,7 +288,7 @@ export default function App() {
 
       const { data: place, error: placeError } = await supabase
         .from('postal_codes')
-        .select('id,country_code,postal_code,city,municipality,district,region,county,latitude,longitude,content')
+        .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
         .eq('id', mapFact.postal_id)
         .eq('status', 'published')
         .single()
