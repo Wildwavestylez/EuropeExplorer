@@ -123,7 +123,7 @@ export default function ViewportFactLayer({ onSelectFact }) {
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 52,
-      disableClusteringAtZoom: 13,
+      disableClusteringAtZoom: 14,
     })
     layerRef.current = layer
     map.addLayer(layer)
