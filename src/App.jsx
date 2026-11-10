@@ -183,6 +183,9 @@ export default function App() {
           pageCount, pageSize, diagnosticsError: '',
         })
         try {
+          // Keep diagnostic requests small: the view runs full JSON-schema checks
+          // and large pages can exceed Supabase's statement timeout.
+          const diagnosticsPageSize = 50
           let diagnosticFrom = 0
           let rejected = []
           while (true) {
@@ -190,15 +193,15 @@ export default function App() {
               .from('postal_codes_explorer_diagnostics')
               .select('id,country_code,postal_code,city,reasons')
               .order('postal_code')
-              .range(diagnosticFrom, diagnosticFrom + pageSize - 1)
+              .range(diagnosticFrom, diagnosticFrom + diagnosticsPageSize - 1)
             if (diagnosticError) throw diagnosticError
             const page = diagnosticPage || []
             rejected = rejected.concat(page.map(record => ({
               ...record,
               reasons: Array.isArray(record.reasons) ? record.reasons : [],
             })))
-            if (page.length < pageSize) break
-            diagnosticFrom += pageSize
+            if (page.length < diagnosticsPageSize) break
+            diagnosticFrom += diagnosticsPageSize
           }
           if (alive) setLoadDiagnostics({
             country, fetched: all.length + rejected.length, accepted: all.length,
@@ -323,7 +326,7 @@ export default function App() {
         <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika</summary>
         <div style={{ marginTop: '12px', padding: '16px', border: '1px solid #d6d3d1', borderRadius: '10px', background: '#fff', color: '#292524', fontSize: '13px' }}>
           <p style={{ margin: '0 0 6px' }}>Published DE records checked: <strong>{loadDiagnostics.fetched}</strong> · Complete in Explorer: <strong>{loadDiagnostics.accepted}</strong> · Rejected: <strong>{loadDiagnostics.rejected.length}</strong></p>
-          <p style={{ margin: '0 0 12px' }}>Complete-record pages: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize}</p>
+          <p style={{ margin: '0 0 12px' }}>Complete-record pages: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize} · Diagnostics fetched in batches of 50</p>
           {loadDiagnostics.diagnosticsError ? <p style={{ color: '#b91c1c' }}>Diagnostics unavailable: {loadDiagnostics.diagnosticsError}</p> : null}
           {loadDiagnostics.rejected.length === 0 ? <p>{loadDiagnostics.diagnosticsError ? 'Explorer data is available, but diagnostic records could not be loaded.' : 'All published records pass the Explorer completeness checks.'}</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.id || record.postal_code || index} style={{ marginBottom: '10px' }}>
             <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
