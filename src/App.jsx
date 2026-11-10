@@ -190,10 +190,10 @@ export default function App() {
           let rejected = []
           while (true) {
             const { data: diagnosticPage, error: diagnosticError } = await supabase
-              .from('postal_codes_explorer_diagnostics')
-              .select('id,country_code,postal_code,city,reasons')
-              .order('postal_code')
-              .range(diagnosticFrom, diagnosticFrom + diagnosticsPageSize - 1)
+              .rpc('get_postal_code_diagnostics_page', {
+                p_offset: diagnosticFrom,
+                p_limit: diagnosticsPageSize,
+              })
             if (diagnosticError) throw diagnosticError
             const page = diagnosticPage || []
             rejected = rejected.concat(page.map(record => ({
