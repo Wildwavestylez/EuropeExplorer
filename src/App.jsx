@@ -112,6 +112,7 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [placesOpen, setPlacesOpen] = useState(false)
   const [factSheetExpanded, setFactSheetExpanded] = useState(false)
+  const [factSheetOpen, setFactSheetOpen] = useState(false)
   const factSheetDragStart = useRef(null)
   useEffect(() => {
     try { window.localStorage.setItem('europe-explorer-language', lang) } catch {}
@@ -124,6 +125,7 @@ export default function App() {
     setSelected(place)
     setSelectedFact(fact)
     setFactSheetExpanded(false)
+    setFactSheetOpen(true)
   }, [])
 
   useEffect(() => {
@@ -262,10 +264,10 @@ export default function App() {
         </aside>
       </div>
     </section>
-    {selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
+    {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
       <div className="fact-screen-sheet-heading">
         <div className="fact-screen-sheet-title">{activeFact.title || activeFact.name || u.discover}</div>
-        <button className="fact-screen-sheet-close" onClick={() => { setSelectedFact(null); setFactSheetExpanded(false) }} aria-label={u.closeDetails}><X size={18} /></button>
+        <button className="fact-screen-sheet-close" onClick={() => { setFactSheetOpen(false); setFactSheetExpanded(false) }} aria-label={u.closeDetails}><X size={18} /></button>
         <div className="fact-screen-sheet-subtitle">{[selected?.postal_code, activeFact.location?.name, selected?.city].filter(Boolean).join(' · ')}</div>
       </div>
       <div className="fact-screen-sheet-body">{activeFact.text || activeFact.description || ''}</div>
