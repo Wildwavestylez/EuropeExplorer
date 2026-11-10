@@ -504,9 +504,18 @@ export default function App() {
       <a className="brand" href="#" onClick={event => { event.preventDefault(); setActiveMode(''); setSelected(null); setSelectedFact(null); setFactSheetOpen(false) }}><span className="brand-mark"><Compass size={20} /></span><span>EUROPE<span className="brand-light">EXPLORER</span></span></a>
       <div className="top-actions">
         <span className="live-dot" /><span className="top-caption">{u.tagline}</span>
-        <div className={`language-switch ${menuOpen ? "menu-visible" : ""}`}>{LANGS.map(l => <button key={l.id} className={lang === l.id ? "active" : ""} onClick={() => { setLang(l.id); setMenuOpen(false) }}>{l.label}</button>)}</div><button className="menu-toggle" onClick={() => setMenuOpen(v => !v)} aria-label={menuOpen ? u.closeMenu : u.openMenu} aria-expanded={menuOpen}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
+        <div className={`language-switch ${menuOpen ? "menu-visible" : ""}`}>{LANGS.map(l => <button key={l.id} className={lang === l.id ? "active" : ""} onClick={() => setLang(l.id)}>{l.label}</button>)}</div><button className="menu-toggle" onClick={() => setMenuOpen(v => !v)} aria-label={menuOpen ? u.closeMenu : u.openMenu} aria-expanded={menuOpen}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
       </div>
     </header>
+    {menuOpen && <div className="explorer-menu">
+      <div className="explorer-menu-languages">{LANGS.map(l => <button key={l.id} className={lang === l.id ? 'active' : ''} onClick={() => setLang(l.id)}>{l.label}</button>)}</div>
+      <div className="explorer-menu-actions">
+        <button className="welcome-option" onClick={() => { setMenuOpen(false); startWithLocation() }}><span className="welcome-icon"><MapPin size={20}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={17}/></button>
+        <form className="welcome-option welcome-search" onSubmit={event => { setMenuOpen(false); searchIntroPlace(event) }}><span className="welcome-icon"><Search size={20}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : 'Search for a place'}</strong><input value={introSearch} onChange={event => setIntroSearch(event.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : 'City, town or postal code…'} /></span><button type="submit" aria-label="Search"><ArrowUpRight size={17}/></button></form>
+        <button className="welcome-option" onClick={() => { setMenuOpen(false); openAreaPicker() }}><span className="welcome-icon"><Globe2 size={20}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : 'Country, region and district'}</small></span><ArrowUpRight size={17}/></button>
+        <button className="welcome-option welcome-real" onClick={() => { setMenuOpen(false); startExplorer() }}><span className="welcome-icon"><Compass size={21}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={17}/></button>
+      </div>
+    </div>}
 
     {!activeMode ? <section className="welcome-screen">
       <div className="welcome-orbit" aria-hidden="true"><div className="welcome-globe"><span /><i /><b /></div><small>EUROPE / DISCOVER</small></div>
@@ -523,24 +532,7 @@ export default function App() {
       {introMessage && <p className="welcome-message" role="status">{introMessage}</p>}
       <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
     </section> : <>
-    <section className="hero">
-      <div className="hero-copy">
-        <div className="eyebrow"><span />{t.eyebrow}</div>
-        <h1>{t.title}</h1>
-        <p>{t.subtitle}</p>
-        <div className="search-wrap"><Search size={19} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder={t.search} /><kbd>⌕</kbd></div>
-        <div className="hero-meta"><span><Globe2 size={15} /> {t.all}</span><b>{loading ? '—' : filtered.length.toLocaleString()}</b><span>{t.results}</span></div>
-      </div>
-      <div className="hero-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="globe"><div className="globe-grid" /><span className="globe-pin pin-a" /><span className="globe-pin pin-b" /><span className="globe-pin pin-c" /></div><span className="art-label label-a">51° 10′ N</span><span className="art-label label-b">EUROPE / 01</span></div>
-    </section>
-
     <section className="workspace">
-      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedFact(null); setSelectedState(''); setSelectedCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code}</option>)}</select></div></div>
-      <div className="mobile-tools"><button onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen}><Filter size={16} /> {u.filters}</button><button onClick={() => setPlacesOpen(v => !v)} aria-expanded={placesOpen}><List size={16} /> {u.places} ({filtered.length})</button></div><div className={`filter-bar ${filtersOpen ? "mobile-open" : ""}`}>
-        <label className="filter-field"><span>{country === 'DE' ? u.bundesland : u.region}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedCounty(''); setSelected(null); setSelectedFact(null) }}><option value="">{country === 'DE' ? u.allStates : u.allRegions}</option>{stateOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-        <label className="filter-field"><span>{country === 'DE' ? u.county : u.district}</span><select value={selectedCounty} onChange={e => { setSelectedCounty(e.target.value); setSelected(null) }}><option value="">{u.allCounties}</option>{countyOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-        <button className="filter-reset" onClick={() => { setSelectedState(''); setSelectedCounty(''); setQuery(''); setSelected(null); setSelectedFact(null) }}>{u.reset}</button>
-      </div>
       <div className="explorer-grid">
         <aside className={`places-panel ${placesOpen ? "mobile-open" : ""}`}>
           <div className="panel-head"><span>{t.all}</span><span className="count">{filtered.length}</span></div>
