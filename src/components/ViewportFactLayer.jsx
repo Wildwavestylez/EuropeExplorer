@@ -106,7 +106,7 @@ export default function ViewportFactLayer({ onSelectFact }) {
       }
       layer.addLayer(marker)
     })
-  }, [country, map])
+  }, [map])
 
   useEffect(() => {
     const layer = L.markerClusterGroup({
