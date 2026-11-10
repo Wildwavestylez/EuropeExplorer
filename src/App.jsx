@@ -84,7 +84,8 @@ function getState(place) {
 }
 
 function getCounty(place) {
-  return place.content?.county || place.district || ''
+  // Landkreis/Kreis is the county field; district is a Stadtteil/Ortsteil.
+  return place.county || ''
 }
 
 export default function App() {
@@ -154,7 +155,7 @@ export default function App() {
         while (true) {
           const { data, error } = await supabase
             .from('postal_codes_explorer_completed')
-            .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude')
+            .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,county')
             .eq('country_code', country)
             .order('postal_code')
             .range(from, from + pageSize - 1)
