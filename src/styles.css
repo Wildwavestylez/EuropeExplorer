@@ -309,5 +309,5 @@
   .explorer-grid{border-top:0}
   .map-panel{height: min(66dvh,720px);min-height:380px}
   .map{min-height:380px}
-  .explorer-menu{right:8px;width:min(390px,calc(100vw - 16px));max-height:calc(100dvh - 70px)}
+  .explorer-menu{position:fixed;top:calc(58px + env(safe-area-inset-top));right:8px;z-index:1300;width:min(390px,calc(100vw - 16px));max-height:calc(100dvh - 70px)}
 }
