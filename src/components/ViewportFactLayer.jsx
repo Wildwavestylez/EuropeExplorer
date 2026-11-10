@@ -118,6 +118,7 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
     })
     layerRef.current = layer
     map.addLayer(layer)
+    cacheRef.current.clear()
 
     const scheduleLoad = () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
@@ -142,10 +143,6 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
     }
   }, [map, loadViewport])
 
-  useEffect(() => {
-    cacheRef.current.clear()
-    loadViewport()
-  }, [country, loadViewport])
 
   return null
 }
