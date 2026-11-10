@@ -265,11 +265,25 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : 'Finding a random discovery…')
     try {
-      const { data, error } = await supabase.from('postal_codes').select('id,country_code,postal_code,city,latitude,longitude,content', { count: 'exact' }).eq('status', 'published').not('content', 'is', null).limit(1000)
-      if (error) throw error
-      const candidates = (data || []).flatMap(place => (place.content?.facts || []).filter(fact => Number.isFinite(fact.location?.lat) && Number.isFinite(fact.location?.lon)).map(fact => ({ place, fact })))
-      if (!candidates.length) throw new Error('No published facts with coordinates')
-      const pick = candidates[Math.floor(Math.random() * candidates.length)]
+      const { count, error: countError } = await supabase.from('postal_codes').select('id', { count: 'exact', head: true }).eq('status', 'published')
+      if (countError) throw countError
+      if (!count) throw new Error('No published places')
+      let pick = null
+      // Sample random published records across the complete table, not just the first page.
+      for (let attempt = 0; attempt < 20 && !pick; attempt += 1) {
+        const offset = Math.floor(Math.random() * count)
+        const { data, error } = await supabase.from('postal_codes')
+          .select('id,country_code,postal_code,city,latitude,longitude,content')
+          .eq('status', 'published').range(offset, offset)
+        if (error) throw error
+        const place = data?.[0]
+        const facts = (place?.content?.facts || []).filter(fact =>
+          Number.isFinite(fact.location?.lat) && Number.isFinite(fact.location?.lon)
+          && fact.location.lat >= -90 && fact.location.lat <= 90
+          && fact.location.lon >= -180 && fact.location.lon <= 180)
+        if (place && facts.length) pick = { place, fact: facts[Math.floor(Math.random() * facts.length)] }
+      }
+      if (!pick) throw new Error('No published facts with coordinates')
       const place = pick.place
       setCountry(place.country_code || 'DE')
       setMapStart([pick.fact.location.lat, pick.fact.location.lon])
