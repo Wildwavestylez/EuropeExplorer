@@ -258,3 +258,8 @@
 .fact-screen-sheet-handle{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:36px;margin:0 -16px;padding:5px 10px 8px;border:0;border-top:1px solid #344b5d;background:#1c3042;color:#a9bac4;font:7px/1.2 'DM Mono',monospace;letter-spacing:.8px;touch-action:none;user-select:none}
 .fact-screen-sheet-grip{width:34px;height:4px;border-radius:5px;background:#8297a5}
 @media(min-width:701px){.fact-screen-sheet{bottom:22px;left:auto;right:22px;transform:none;width:min(380px,calc(100vw - 44px));max-height:38dvh}.fact-screen-sheet.is-expanded{max-height:70dvh}}
+
+/* Viewport map aggregation markers */
+.fact-cluster-icon{background:transparent;border:0;display:grid;place-items:center}
+.fact-cluster-count{display:grid;place-items:center;width:42px;height:42px;border:2px solid #f2a65a;border-radius:50%;background:#284f68;color:#f4f0e8;font:600 11px 'DM Mono',monospace;box-shadow:0 2px 10px #101c2b66}
+.fact-pin-detailed .fact-pin-dot{width:15px;height:15px;margin:1px;border-color:#fff;background:#f2a65a}
