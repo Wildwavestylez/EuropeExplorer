@@ -66,7 +66,7 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, selectedFact, mapStart, activeMode }) {
+function MapFocus({ place, selectedFact, mapStart, activeMode, areaPlaces }) {
   const map = useMap()
   useEffect(() => {
     const factLat = Number(selectedFact?.location?.lat)
@@ -75,13 +75,25 @@ function MapFocus({ place, selectedFact, mapStart, activeMode }) {
       map.flyTo([factLat, factLon], 13, { duration: 0.8 })
     } else if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
+    } else if (activeMode === 'area' && Array.isArray(areaPlaces)) {
+      const points = areaPlaces
+        .map(item => [Number(item.latitude), Number(item.longitude)])
+        .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)
+          && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
+      if (points.length === 1) {
+        map.flyTo(points[0], 10, { duration: 0.8 })
+      } else if (points.length > 1) {
+        map.flyToBounds(points, { padding: [36, 36], maxZoom: 9, duration: 0.9 })
+      } else if (Array.isArray(mapStart) && mapStart.length === 2) {
+        map.flyTo([Number(mapStart[0]), Number(mapStart[1])], 6, { duration: 0.8 })
+      }
     } else if (activeMode && Array.isArray(mapStart) && mapStart.length === 2
       && Number.isFinite(Number(mapStart[0])) && Number.isFinite(Number(mapStart[1]))) {
-      map.flyTo([Number(mapStart[0]), Number(mapStart[1])], activeMode === 'area' ? 6 : 13, { duration: 0.8 })
+      map.flyTo([Number(mapStart[0]), Number(mapStart[1])], 13, { duration: 0.8 })
     } else {
       map.setView([51.1657, 10.4515], 6, { animate: true })
     }
-  }, [place, selectedFact, mapStart, activeMode, map])
+  }, [place, selectedFact, mapStart, activeMode, areaPlaces, map])
   return null
 }
 
@@ -547,7 +559,7 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} selectedFact={selectedFact} mapStart={mapStart} activeMode={activeMode} />
+            <MapFocus place={selected} selectedFact={selectedFact} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} />
             <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
