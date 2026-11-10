@@ -533,6 +533,9 @@ export default function App() {
       <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
     </section> : <>
     <section className="workspace">
+      <div className="section-heading">
+        <div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div>
+      </div>
       <div className="explorer-grid">
         <aside className={`places-panel ${placesOpen ? "mobile-open" : ""}`}>
           <div className="panel-head"><span>{t.all}</span><span className="count">{filtered.length}</span></div>
