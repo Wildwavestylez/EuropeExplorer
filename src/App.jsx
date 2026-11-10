@@ -108,6 +108,13 @@ export default function App() {
   const [selected, setSelected] = useState(null)
   const [selectedFact, setSelectedFact] = useState(null)
   const [country, setCountry] = useState('DE')
+  const [areaPickerOpen, setAreaPickerOpen] = useState(false)
+  const [areaCatalog, setAreaCatalog] = useState([])
+  const [areaCatalogLoading, setAreaCatalogLoading] = useState(false)
+  const [areaCatalogError, setAreaCatalogError] = useState('')
+  const [areaCountry, setAreaCountry] = useState('')
+  const [areaState, setAreaState] = useState('')
+  const [areaCounty, setAreaCounty] = useState('')
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -122,6 +129,78 @@ export default function App() {
 
   const t = copy[lang] || copy.en
   const u = uiCopy[lang] || uiCopy.en
+
+  // The picker is driven exclusively by records that are already eligible for Explorer.
+  // New countries, regions and counties appear automatically when the completed view changes.
+  useEffect(() => {
+    let alive = true
+    async function loadAreaCatalog() {
+      setAreaCatalogLoading(true)
+      setAreaCatalogError('')
+      try {
+        const pageSize = 800
+        let from = 0
+        let records = []
+        while (true) {
+          const { data, error } = await supabase
+            .from('postal_codes_explorer_completed')
+            .select('country_code,region,county')
+            .order('country_code')
+            .range(from, from + pageSize - 1)
+          if (error) throw error
+          const page = data || []
+          records = records.concat(page)
+          if (page.length < pageSize) break
+          from += pageSize
+        }
+        if (!alive) return
+        setAreaCatalog(records)
+        const availableCountries = [...new Set(records.map(row => row.country_code).filter(Boolean))].sort()
+        setAreaCountry(current => availableCountries.includes(current) ? current : (availableCountries[0] || ''))
+      } catch (error) {
+        console.error('Could not load available Explorer areas:', error)
+        if (alive) setAreaCatalogError(error.message || 'Could not load available areas.')
+      } finally {
+        if (alive) setAreaCatalogLoading(false)
+      }
+    }
+    loadAreaCatalog()
+    return () => { alive = false }
+  }, [])
+
+  const areaCountries = useMemo(
+    () => [...new Set(areaCatalog.map(row => row.country_code).filter(Boolean))].sort(),
+    [areaCatalog]
+  )
+  const areaStates = useMemo(
+    () => [...new Set(areaCatalog.filter(row => row.country_code === areaCountry).map(row => row.region).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [areaCatalog, areaCountry]
+  )
+  const areaCounties = useMemo(
+    () => [...new Set(areaCatalog.filter(row => row.country_code === areaCountry && (!areaState || row.region === areaState)).map(row => row.county).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [areaCatalog, areaCountry, areaState]
+  )
+  const openAreaPicker = () => {
+    setAreaCountry(country)
+    setAreaState('')
+    setAreaCounty('')
+    setAreaPickerOpen(true)
+    setIntroMessage('')
+  }
+  const confirmAreaPicker = () => {
+    if (!areaCountry) return
+    setCountry(areaCountry)
+    setSelectedState(areaState)
+    setSelectedCounty(areaCounty)
+    setQuery('')
+    setSelected(null)
+    setSelectedFact(null)
+    setFactSheetOpen(false)
+    setMapStart([51.1657, 10.4515])
+    setActiveMode('area')
+    setAreaPickerOpen(false)
+    setIntroMessage('')
+  }
 
   const handlePlaceSelect = useCallback(async (place) => {
     const { data, error } = await supabase
@@ -426,7 +505,7 @@ export default function App() {
       <div className="welcome-options">
         <button className="welcome-option" onClick={startWithLocation}><span className="welcome-icon"><MapPin size={21}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={18}/></button>
         <form className="welcome-option welcome-search" onSubmit={searchIntroPlace}><span className="welcome-icon"><Search size={21}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : 'Search for a place'}</strong><input value={introSearch} onChange={e => setIntroSearch(e.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : 'City, town or postal code…'} /></span><button type="submit" aria-label="Search"><ArrowUpRight size={18}/></button></form>
-        <button className="welcome-option" onClick={() => { setActiveMode('area'); setIntroMessage('') }}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
+        <button className="welcome-option" onClick={openAreaPicker}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
         <button className="welcome-option welcome-real" onClick={startExplorer}><span className="welcome-icon"><Compass size={22}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={18}/></button>
       </div>
       {introMessage && <p className="welcome-message" role="status">{introMessage}</p>}
@@ -444,7 +523,7 @@ export default function App() {
     </section>
 
     <section className="workspace">
-      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedFact(null); setSelectedState(''); setSelectedCounty('') }}><option value="DE">{u.germany} · DE</option><option value="CZ">{u.czechia} · CZ</option></select></div></div>
+      <div className="section-heading"><div><div className="section-kicker"><span />{t.explore}</div><h2>{t.source}</h2></div><div className="country-select"><SlidersHorizontal size={15} /><select value={country} onChange={e => { setCountry(e.target.value); setSelected(null); setSelectedFact(null); setSelectedState(''); setSelectedCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code}</option>)}</select></div></div>
       <div className="mobile-tools"><button onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen}><Filter size={16} /> {u.filters}</button><button onClick={() => setPlacesOpen(v => !v)} aria-expanded={placesOpen}><List size={16} /> {u.places} ({filtered.length})</button></div><div className={`filter-bar ${filtersOpen ? "mobile-open" : ""}`}>
         <label className="filter-field"><span>{country === 'DE' ? u.bundesland : u.region}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedCounty(''); setSelected(null); setSelectedFact(null) }}><option value="">{country === 'DE' ? u.allStates : u.allRegions}</option>{stateOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <label className="filter-field"><span>{country === 'DE' ? u.county : u.district}</span><select value={selectedCounty} onChange={e => { setSelectedCounty(e.target.value); setSelected(null) }}><option value="">{u.allCounties}</option>{countyOptions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
@@ -485,6 +564,22 @@ export default function App() {
       </div>
     </section>
     </>}
+    {areaPickerOpen && <div className="area-picker-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setAreaPickerOpen(false) }}>
+      <section className="area-picker" role="dialog" aria-modal="true" aria-labelledby="area-picker-title">
+        <button className="area-picker-close" onClick={() => setAreaPickerOpen(false)} aria-label={lang === 'cs' ? 'Zavřít' : 'Close'}><X size={19}/></button>
+        <div className="area-picker-kicker">{lang === 'cs' ? 'VÝBĚR OBLASTI' : lang === 'de' ? 'GEBIET AUSWÄHLEN' : 'AREA SELECTION'}</div>
+        <h2 id="area-picker-title">{lang === 'cs' ? 'Kam se chceš podívat?' : lang === 'de' ? 'Wohin möchtest du?' : 'Where would you like to explore?'}</h2>
+        <p>{lang === 'cs' ? 'Vyber zemi a potom můžeš výběr upřesnit podle regionu a okresu.' : lang === 'de' ? 'Wähle ein Land und grenze die Auswahl nach Region und Landkreis ein.' : 'Choose a country, then narrow your selection by region and district.'}</p>
+        {areaCatalogLoading ? <div className="area-picker-status"><LoaderCircle className="spin" size={18}/>{lang === 'cs' ? 'Načítám dostupné oblasti…' : 'Loading available areas…'}</div> : areaCatalogError ? <div className="area-picker-error">{areaCatalogError}</div> : areaCountries.length === 0 ? <div className="area-picker-status">{lang === 'cs' ? 'Zatím nejsou dostupné žádné publikované oblasti.' : 'No published areas are available yet.'}</div> : <>
+          <label className="area-picker-field"><span>{lang === 'cs' ? 'ZEMĚ' : lang === 'de' ? 'LAND' : 'COUNTRY'}</span><select value={areaCountry} onChange={event => { setAreaCountry(event.target.value); setAreaState(''); setAreaCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code}</option>)}</select></label>
+          <div className="area-picker-row">
+            <label className="area-picker-field"><span>{areaCountry === 'DE' ? u.bundesland : u.region}</span><select value={areaState} onChange={event => { setAreaState(event.target.value); setAreaCounty('') }}><option value="">{areaCountry === 'DE' ? u.allStates : u.allRegions}</option>{areaStates.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+            <label className="area-picker-field"><span>{areaCountry === 'DE' ? u.county : u.district}</span><select value={areaCounty} onChange={event => setAreaCounty(event.target.value)}><option value="">{u.allCounties}</option>{areaCounties.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          </div>
+          <div className="area-picker-footer"><span>{areaCatalog.filter(row => row.country_code === areaCountry && (!areaState || row.region === areaState) && (!areaCounty || row.county === areaCounty)).length.toLocaleString()} {lang === 'cs' ? 'dostupných oblastí' : 'available areas'}</span><button onClick={confirmAreaPicker}>{lang === 'cs' ? 'Zobrazit na mapě' : lang === 'de' ? 'Auf der Karte anzeigen' : 'Explore this area'} <ArrowUpRight size={16}/></button></div>
+        </>}
+      </section>
+    </div>}
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
       <div className="fact-screen-sheet-heading">
         <div className="fact-screen-sheet-title">{activeFact.title || activeFact.name || u.discover}</div>
