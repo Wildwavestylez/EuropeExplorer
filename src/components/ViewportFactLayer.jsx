@@ -114,7 +114,7 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 52,
-      disableClusteringAtZoom: 17,
+      disableClusteringAtZoom: 13,
     })
     layerRef.current = layer
     map.addLayer(layer)
