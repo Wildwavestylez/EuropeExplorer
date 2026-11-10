@@ -257,15 +257,79 @@ export default function App() {
     const term = introSearch.trim()
     if (!term) return
     setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : 'Searching for place…')
+
+    const requestJson = async (url) => {
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 9000)
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        })
+        if (!response.ok) throw new Error(`Geocoding service returned ${response.status}`)
+        return await response.json()
+      } finally {
+        window.clearTimeout(timeout)
+      }
+    }
+
     try {
-      const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&limit=1&lang=${lang}`)
-      if (!response.ok) throw new Error('Search failed')
-      const result = await response.json()
-      const feature = result.features?.[0]
-      if (!feature) { setIntroMessage(lang === 'cs' ? 'Místo se nepodařilo najít.' : 'Place not found.'); return }
-      const [lon, lat] = feature.geometry.coordinates
-      setMapStart([lat, lon]); setSelected(null); setSelectedFact(null); setActiveMode('search'); setIntroMessage('')
-    } catch { setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : 'Search failed. Please try again.') }
+      let coordinates = null
+      let lastError = null
+
+      // Primary geocoder: Photon / OpenStreetMap.
+      try {
+        const result = await requestJson(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&limit=5&lang=${lang}`
+        )
+        const feature = result.features?.find(item => {
+          const coords = item.geometry?.coordinates
+          return Array.isArray(coords) && coords.length >= 2
+            && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1]))
+            && Number(coords[1]) >= -90 && Number(coords[1]) <= 90
+            && Number(coords[0]) >= -180 && Number(coords[0]) <= 180
+        })
+        if (feature) coordinates = feature.geometry.coordinates
+      } catch (error) {
+        lastError = error
+        console.warn('Photon geocoding failed; trying fallback:', error)
+      }
+
+      // Fallback geocoder: Nominatim / OpenStreetMap.
+      if (!coordinates) {
+        try {
+          const results = await requestJson(
+            `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&accept-language=${encodeURIComponent(lang)}&q=${encodeURIComponent(term)}`
+          )
+          const result = results?.find(item =>
+            Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon))
+            && Number(item.lat) >= -90 && Number(item.lat) <= 90
+            && Number(item.lon) >= -180 && Number(item.lon) <= 180
+          )
+          if (result) coordinates = [Number(result.lon), Number(result.lat)]
+        } catch (error) {
+          lastError = error
+          console.error('Fallback geocoding failed:', error)
+        }
+      }
+
+      if (!coordinates) {
+        setIntroMessage(lastError
+          ? (lang === 'cs' ? 'Vyhledávací služby jsou právě nedostupné. Zkus to prosím za chvíli.' : 'Search services are temporarily unavailable. Please try again shortly.')
+          : (lang === 'cs' ? 'Místo se nepodařilo najít. Zkus upřesnit název nebo přidat zemi.' : 'Place not found. Try a more specific name or add the country.'))
+        return
+      }
+
+      const [lon, lat] = coordinates.map(Number)
+      setMapStart([lat, lon])
+      setSelected(null)
+      setSelectedFact(null)
+      setActiveMode('search')
+      setIntroMessage('')
+    } catch (error) {
+      console.error('Place search failed:', error)
+      setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : 'Search failed. Please try again.')
+    }
   }
 
   const startExplorer = async () => {
