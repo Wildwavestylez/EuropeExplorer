@@ -70,10 +70,9 @@ function factCoordinates(place) {
 function MapFocus({ place, selectedFact, places }) {
   const map = useMap()
   useEffect(() => {
-    const factPoint = selectedFact?.location
-    const points = place && factPoint && Number.isFinite(factPoint.lat) && Number.isFinite(factPoint.lon)
-      ? [[factPoint.lat, factPoint.lon]]
-      : place ? factCoordinates(place) : places.flatMap(factCoordinates)
+    // Selecting a fact opens its information sheet; it must never move or zoom the map.
+    if (selectedFact) return
+    const points = place ? factCoordinates(place) : places.flatMap(factCoordinates)
     if (points.length > 1) {
       map.fitBounds(points, { padding: [58, 58], maxZoom: place ? 15 : 6, animate: true, duration: 0.8 })
     } else if (points.length === 1) {
