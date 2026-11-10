@@ -146,9 +146,14 @@ export default function App() {
   useEffect(() => {
     let alive = true
     async function load() {
-      setLoading(true); setError('')
+      const pageSize = 800
+      setLoading(true)
+      setError('')
+      setLoadDiagnostics(country === 'DE' ? {
+        country, fetched: 0, accepted: 0, rejected: [], pageCount: 0, pageSize,
+        diagnosticsError: '',
+      } : null)
       try {
-        const pageSize = 800
         let from = 0
         let all = []
         let pageCount = 0
@@ -166,9 +171,20 @@ export default function App() {
           if (page.length < pageSize) break
           from += pageSize
         }
-        let rejected = []
-        if (country === 'DE') {
+        if (!alive) return
+        setPlaces(all)
+        if (country !== 'DE') {
+          setLoadDiagnostics(null)
+          return
+        }
+        // Diagnostics are non-blocking: failures must not hide this link or stop Explorer.
+        setLoadDiagnostics({
+          country, fetched: all.length, accepted: all.length, rejected: [],
+          pageCount, pageSize, diagnosticsError: '',
+        })
+        try {
           let diagnosticFrom = 0
+          let rejected = []
           while (true) {
             const { data: diagnosticPage, error: diagnosticError } = await supabase
               .from('postal_codes_explorer_diagnostics')
@@ -184,17 +200,15 @@ export default function App() {
             if (page.length < pageSize) break
             diagnosticFrom += pageSize
           }
-        }
-        if (alive) {
-          setPlaces(all)
-          setLoadDiagnostics({
-            country,
-            fetched: all.length + rejected.length,
-            accepted: all.length,
-            rejected,
-            pageCount,
-            pageSize,
+          if (alive) setLoadDiagnostics({
+            country, fetched: all.length + rejected.length, accepted: all.length,
+            rejected, pageCount, pageSize, diagnosticsError: '',
           })
+        } catch (diagnosticError) {
+          console.error('Could not load postal-code diagnostics:', diagnosticError)
+          if (alive) setLoadDiagnostics(current => current?.country === country
+            ? { ...current, diagnosticsError: diagnosticError.message || 'Diagnostics could not be loaded.' }
+            : current)
         }
       } catch (e) {
         if (alive) setError(e.message || u.error)
@@ -310,7 +324,8 @@ export default function App() {
         <div style={{ marginTop: '12px', padding: '16px', border: '1px solid #d6d3d1', borderRadius: '10px', background: '#fff', color: '#292524', fontSize: '13px' }}>
           <p style={{ margin: '0 0 6px' }}>Published DE records checked: <strong>{loadDiagnostics.fetched}</strong> · Complete in Explorer: <strong>{loadDiagnostics.accepted}</strong> · Rejected: <strong>{loadDiagnostics.rejected.length}</strong></p>
           <p style={{ margin: '0 0 12px' }}>Complete-record pages: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize}</p>
-          {loadDiagnostics.rejected.length === 0 ? <p>All published records pass the Explorer completeness checks.</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.id || record.postal_code || index} style={{ marginBottom: '10px' }}>
+          {loadDiagnostics.diagnosticsError ? <p style={{ color: '#b91c1c' }}>Diagnostics unavailable: {loadDiagnostics.diagnosticsError}</p> : null}
+          {loadDiagnostics.rejected.length === 0 ? <p>{loadDiagnostics.diagnosticsError ? 'Explorer data is available, but diagnostic records could not be loaded.' : 'All published records pass the Explorer completeness checks.'}</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.id || record.postal_code || index} style={{ marginBottom: '10px' }}>
             <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
             <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>{record.reasons.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul>
           </li>)}</ol>}
