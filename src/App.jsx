@@ -66,19 +66,18 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, selectedFact, mapStart, activeMode, areaPlaces }) {
+function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces }) {
   const map = useMap()
   useEffect(() => {
-    const factLat = Number(selectedFact?.location?.lat)
-    const factLon = Number(selectedFact?.location?.lon)
-    // Real Explorer must focus its randomly selected fact; ordinary pin clicks preserve the user's current map view.
-    if (selectedFact) {
-      if (activeMode === 'real' && Array.isArray(mapStart) && mapStart.length === 2
-        && Number.isFinite(Number(mapStart[0])) && Number.isFinite(Number(mapStart[1]))) {
-        map.flyTo([Number(mapStart[0]), Number(mapStart[1])], 14, { duration: 0.9 })
-      }
+    // Only an explicit Random Explorer request may move the map to a selected fact.
+    // Selecting a fact by clicking its map pin must never change the current map view.
+    if (Array.isArray(randomFocusPoint) && randomFocusPoint.length === 2
+      && Number.isFinite(Number(randomFocusPoint[0])) && Number.isFinite(Number(randomFocusPoint[1]))) {
+      map.flyTo([Number(randomFocusPoint[0]), Number(randomFocusPoint[1])], 14, { duration: 0.9 })
       return
-    } else if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
+    }
+    if (selectedFact) return
+    if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
     } else if (activeMode === 'area' && Array.isArray(areaPlaces)) {
       const points = areaPlaces
@@ -98,7 +97,7 @@ function MapFocus({ place, selectedFact, mapStart, activeMode, areaPlaces }) {
     } else {
       map.setView([51.1657, 10.4515], 6, { animate: true })
     }
-  }, [place, selectedFact, mapStart, activeMode, areaPlaces, map])
+  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, map])
   return null
 }
 
@@ -124,6 +123,7 @@ export default function App() {
   const [lang, setLang] = useState(getInitialLanguage)
   const [selected, setSelected] = useState(null)
   const [selectedFact, setSelectedFact] = useState(null)
+  const [randomFocusPoint, setRandomFocusPoint] = useState(null)
   const [country, setCountry] = useState('DE')
   const [areaPickerOpen, setAreaPickerOpen] = useState(false)
   const [areaCatalog, setAreaCatalog] = useState([])
@@ -244,6 +244,7 @@ export default function App() {
       return
     }
     setSelected({ ...place, content: data.content })
+    setRandomFocusPoint(null)
     setSelectedFact(fact)
     setFactSheetExpanded(false)
     setFactSheetOpen(true)
@@ -468,6 +469,7 @@ export default function App() {
       setCountry(place.country_code || 'DE')
       setMapStart([mapFact.lat, mapFact.lon])
       setSelected(selectedPlace)
+      setRandomFocusPoint([mapFact.lat, mapFact.lon])
       setSelectedFact(fact)
       setActiveMode('real')
       setFactSheetExpanded(false)
@@ -564,7 +566,7 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} selectedFact={selectedFact} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} />
+            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} />
             <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
