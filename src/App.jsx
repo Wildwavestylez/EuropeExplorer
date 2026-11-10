@@ -571,6 +571,18 @@ export default function App() {
             <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
+    {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
+      <div className="fact-screen-sheet-heading">
+        <div className="fact-screen-sheet-title">{activeFact.title || activeFact.name || u.discover}</div>
+        <button className="fact-screen-sheet-close" onClick={() => { setFactSheetOpen(false); setFactSheetExpanded(false) }} aria-label={u.closeDetails}><X size={18} /></button>
+        <div className="fact-screen-sheet-subtitle">{[selected?.postal_code, activeFact.location?.name, selected?.city].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div className="fact-screen-sheet-body">{activeFact.text || activeFact.description || ''}</div>
+      <div className="fact-screen-sheet-category">{(mapCategoryCopy[lang]?.[activeFact.map_category] || activeFact.category || 'Discovery').toUpperCase()}</div>
+      <button className="fact-screen-sheet-handle" onPointerDown={event => { factSheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture?.(event.pointerId) }} onPointerUp={event => { if (factSheetDragStart.current === null) return; const delta = event.clientY - factSheetDragStart.current; setFactSheetExpanded(Math.abs(delta) > 12 ? delta < 0 : !factSheetExpanded); factSheetDragStart.current = null }} onPointerCancel={() => { factSheetDragStart.current = null }} onClick={() => {}} aria-label={factSheetExpanded ? 'Collapse fact' : 'Expand fact'}>
+        <span className="fact-screen-sheet-grip" /><span>{factSheetExpanded ? (lang === 'cs' ? 'TAŽENÍM DOLŮ SBALÍŠ' : 'DRAG DOWN TO COLLAPSE') : (lang === 'cs' ? 'TAŽENÍM NAHORU ZOBRAZÍŠ VÍCE' : 'DRAG UP TO READ MORE')}</span>
+      </button>
+    </section>}
         </div>
 
         <aside className={`detail-panel ${selected ? "has-selection" : ""}`}>
@@ -600,18 +612,6 @@ export default function App() {
         </>}
       </section>
     </div>}
-    {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
-      <div className="fact-screen-sheet-heading">
-        <div className="fact-screen-sheet-title">{activeFact.title || activeFact.name || u.discover}</div>
-        <button className="fact-screen-sheet-close" onClick={() => { setFactSheetOpen(false); setFactSheetExpanded(false) }} aria-label={u.closeDetails}><X size={18} /></button>
-        <div className="fact-screen-sheet-subtitle">{[selected?.postal_code, activeFact.location?.name, selected?.city].filter(Boolean).join(' · ')}</div>
-      </div>
-      <div className="fact-screen-sheet-body">{activeFact.text || activeFact.description || ''}</div>
-      <div className="fact-screen-sheet-category">{(mapCategoryCopy[lang]?.[activeFact.map_category] || activeFact.category || 'Discovery').toUpperCase()}</div>
-      <button className="fact-screen-sheet-handle" onPointerDown={event => { factSheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture?.(event.pointerId) }} onPointerUp={event => { if (factSheetDragStart.current === null) return; const delta = event.clientY - factSheetDragStart.current; setFactSheetExpanded(Math.abs(delta) > 12 ? delta < 0 : !factSheetExpanded); factSheetDragStart.current = null }} onPointerCancel={() => { factSheetDragStart.current = null }} onClick={() => {}} aria-label={factSheetExpanded ? 'Collapse fact' : 'Expand fact'}>
-        <span className="fact-screen-sheet-grip" /><span>{factSheetExpanded ? (lang === 'cs' ? 'TAŽENÍM DOLŮ SBALÍŠ' : 'DRAG DOWN TO COLLAPSE') : (lang === 'cs' ? 'TAŽENÍM NAHORU ZOBRAZÍŠ VÍCE' : 'DRAG UP TO READ MORE')}</span>
-      </button>
-    </section>}
     {country === 'DE' && loadDiagnostics?.country === 'DE' && <section style={{ margin: '8px auto 16px', padding: '0 12px', maxWidth: '1200px', color: '#78716c', fontSize: '11px' }}>
       <details>
         <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika</summary>
