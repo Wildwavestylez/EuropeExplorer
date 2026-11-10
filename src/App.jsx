@@ -402,7 +402,7 @@ export default function App() {
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} />
-            <ViewportFactLayer country={country} onSelectFact={handleFactSelect} />
+            <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
         </div>
