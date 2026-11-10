@@ -12,6 +12,7 @@ const CACHE_LIMIT = 24
 function makeMarker(point, zoom) {
   if (point.is_cluster) {
     return L.marker([point.lat, point.lon], {
+      featureCount: Number(point.point_count) || 0,
       icon: L.divIcon({
         className: 'fact-cluster-icon',
         html: `<span class="fact-cluster-count">${point.point_count}</span>`,
@@ -109,6 +110,15 @@ export default function ViewportFactLayer({ country, onSelectFact }) {
 
   useEffect(() => {
     const layer = L.markerClusterGroup({
+      iconCreateFunction: cluster => {
+        const totalFacts = cluster.getAllChildMarkers().reduce((sum, marker) => sum + (Number(marker.options.featureCount) || 1), 0)
+        return L.divIcon({
+          className: 'fact-cluster-icon',
+          html: '<span class="fact-cluster-count">' + totalFacts + '</span>',
+          iconSize: [42, 42],
+          iconAnchor: [21, 21],
+        })
+      },
       chunkedLoading: true,
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
