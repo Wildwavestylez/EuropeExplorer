@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter } from 'lucide-react'
 import { supabase } from './lib/supabase'
-import { getV3RecordRejectionReasons } from './lib/v3'
-import FactClusterLayer from './components/FactClusterLayer'
+import ViewportFactLayer from './components/ViewportFactLayer'
 
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
@@ -67,23 +66,16 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, selectedFact, places }) {
+function MapFocus({ place, selectedFact }) {
   const map = useMap()
   useEffect(() => {
-    // Selecting a fact opens its information sheet; it must never move or zoom the map.
     if (selectedFact) return
-    const points = place ? factCoordinates(place) : places.flatMap(factCoordinates)
-    if (points.length > 1) {
-      map.fitBounds(points, { padding: [58, 58], maxZoom: place ? 15 : 6, animate: true, duration: 0.8 })
-    } else if (points.length === 1) {
-      map.flyTo(points[0], place ? 14 : 6, { duration: 0.8 })
-    } else if (place) {
-      const point = place.content?.representative_point
-      if (Number.isFinite(point?.lat) && Number.isFinite(point?.lon)) map.flyTo([point.lat, point.lon], 11, { duration: 0.8 })
-    } else {
+    if (place && Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
+      map.flyTo([place.latitude, place.longitude], 12, { duration: 0.8 })
+    } else if (!place) {
       map.setView([51.1657, 10.4515], 6, { animate: true })
     }
-  }, [place, selectedFact, places, map])
+  }, [place, selectedFact, map])
   return null
 }
 
@@ -120,8 +112,17 @@ export default function App() {
   const t = copy[lang] || copy.en
   const u = uiCopy[lang] || uiCopy.en
 
-  const handleFactSelect = useCallback((place, fact) => {
-    setSelected(place)
+  const handleFactSelect = useCallback(async (place, fact) => {
+    const { data, error } = await supabase
+      .from('postal_codes')
+      .select('content')
+      .eq('id', place.id)
+      .single()
+    if (error) {
+      console.error('Could not load selected postal-area details:', error)
+      return
+    }
+    setSelected({ ...place, content: data.content })
     setSelectedFact(fact)
     setFactSheetExpanded(false)
     setFactSheetOpen(true)
@@ -139,7 +140,7 @@ export default function App() {
         while (true) {
           const { data, error } = await supabase
             .from('postal_codes')
-            .select('id,country_code,postal_code,city,municipality,district,region,content')
+            .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude')
             .eq('status', 'published')
             .eq('country_code', country)
             .order('postal_code')
@@ -151,16 +152,9 @@ export default function App() {
           if (page.length < pageSize) break
           from += pageSize
         }
-        const rejected = []
-        const accepted = []
-        all.forEach(record => {
-          const reasons = getV3RecordRejectionReasons(record.content, country)
-          if (reasons.length) rejected.push({ postal_code: record.postal_code, city: record.city, reasons })
-          else accepted.push(record)
-        })
         if (alive) {
-          setPlaces(accepted)
-          setLoadDiagnostics({ country, fetched: all.length, accepted: accepted.length, rejected, pageCount, pageSize })
+          setPlaces(all)
+          setLoadDiagnostics({ country, fetched: all.length, accepted: all.length, rejected: [], pageCount, pageSize })
         }
       } catch (e) {
         if (alive) setError(e.message || u.error)
@@ -193,14 +187,9 @@ export default function App() {
     ? localizedFacts.filter(fact => fact.id === selectedFact.id)
     : localizedFacts
   const activeFact = facts[0] || null
-  const selectedPoint = selected?.content?.representative_point
-  const center = Number.isFinite(selectedPoint?.lat) && Number.isFinite(selectedPoint?.lon)
-    ? [selectedPoint.lat, selectedPoint.lon] : [51.1657, 10.4515]
-  const factPinCount = filtered.reduce((total, place) => total + place.content.facts.filter(f => {
-    const point = f.location
-    return point && Number.isFinite(point.lat) && Number.isFinite(point.lon)
-      && point.lat >= -90 && point.lat <= 90 && point.lon >= -180 && point.lon <= 180
-  }).length, 0)
+  const center = selected && Number.isFinite(selected.latitude) && Number.isFinite(selected.longitude)
+    ? [selected.latitude, selected.longitude] : [51.1657, 10.4515]
+  const factPinCount = null
 
   return <main className="app-shell">
     <header className="topbar">
@@ -244,11 +233,11 @@ export default function App() {
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{factPinCount.toLocaleString()} {u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
+          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} selectedFact={selectedFact} places={filtered} />
-            <FactClusterLayer places={filtered} lang={lang} onSelectFact={handleFactSelect} />
+            <MapFocus place={selected} selectedFact={selectedFact} />
+            <ViewportFactLayer country={country} onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
         </div>
