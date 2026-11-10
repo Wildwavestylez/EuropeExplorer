@@ -71,8 +71,12 @@ function MapFocus({ place, selectedFact, mapStart, activeMode, areaPlaces }) {
   useEffect(() => {
     const factLat = Number(selectedFact?.location?.lat)
     const factLon = Number(selectedFact?.location?.lon)
-    // Selecting a fact pin opens its details but must never change the user's map zoom or position.
+    // Real Explorer must focus its randomly selected fact; ordinary pin clicks preserve the user's current map view.
     if (selectedFact) {
+      if (activeMode === 'real' && Array.isArray(mapStart) && mapStart.length === 2
+        && Number.isFinite(Number(mapStart[0])) && Number.isFinite(Number(mapStart[1]))) {
+        map.flyTo([Number(mapStart[0]), Number(mapStart[1])], 14, { duration: 0.9 })
+      }
       return
     } else if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
