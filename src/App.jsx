@@ -69,11 +69,9 @@ function factCoordinates(place) {
 function MapFocus({ place, selectedFact }) {
   const map = useMap()
   useEffect(() => {
-    if (selectedFact) return
-    if (place && Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
+    if (selectedFact || !place) return
+    if (Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
       map.flyTo([place.latitude, place.longitude], 12, { duration: 0.8 })
-    } else if (!place) {
-      map.setView([51.1657, 10.4515], 6, { animate: true })
     }
   }, [place, selectedFact, map])
   return null
@@ -201,7 +199,7 @@ export default function App() {
     : localizedFacts
   const activeFact = facts[0] || null
   const center = selected && Number.isFinite(selected.latitude) && Number.isFinite(selected.longitude)
-    ? [selected.latitude, selected.longitude] : [51.1657, 10.4515]
+    ? [selected.latitude, selected.longitude] : [50.5, 10.5]
   const selectedPoint = selected?.content?.representative_point || (selected ? { lat: selected.latitude, lon: selected.longitude } : null)
 
   return <main className="app-shell">
@@ -246,11 +244,11 @@ export default function App() {
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
-          <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
+          <div className="map-topline"><span><span className="status-dot" /> {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
+          <MapContainer center={center} zoom={5} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} />
-            <ViewportFactLayer country={country} onSelectFact={handleFactSelect} />
+            <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
         </div>
