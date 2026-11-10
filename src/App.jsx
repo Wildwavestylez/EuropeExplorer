@@ -112,6 +112,20 @@ export default function App() {
   const t = copy[lang] || copy.en
   const u = uiCopy[lang] || uiCopy.en
 
+  const handlePlaceSelect = useCallback(async (place) => {
+    const { data, error } = await supabase
+      .from('postal_codes')
+      .select('content')
+      .eq('id', place.id)
+      .single()
+    if (error) {
+      console.error('Could not load selected postal-area details:', error)
+      return
+    }
+    setSelected({ ...place, content: data.content })
+    setSelectedFact(null)
+  }, [])
+
   const handleFactSelect = useCallback(async (place, fact) => {
     const { data, error } = await supabase
       .from('postal_codes')
@@ -225,7 +239,7 @@ export default function App() {
             {loading && <div className="state-message"><LoaderCircle className="spin" size={20} />{t.loading}</div>}
             {error && <div className="error-message">{error}</div>}
             {!loading && !error && filtered.length === 0 && <div className="state-message">{t.empty}</div>}
-            {filtered.map(p => <button key={p.id} className={'place-row ' + (selected?.id === p.id ? 'selected' : '')} onClick={() => { setSelected(p); setSelectedFact(null); setPlacesOpen(false) }}>
+            {filtered.map(p => <button key={p.id} className={'place-row ' + (selected?.id === p.id ? 'selected' : '')} onClick={() => { handlePlaceSelect(p); setPlacesOpen(false) }}>
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
@@ -268,9 +282,9 @@ export default function App() {
       <details>
         <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika</summary>
         <div style={{ marginTop: '12px', padding: '16px', border: '1px solid #d6d3d1', borderRadius: '10px', background: '#fff', color: '#292524', fontSize: '13px' }}>
-          <p style={{ margin: '0 0 6px' }}>Supabase rows fetched: <strong>{loadDiagnostics.fetched}</strong> · Passed V3 validation: <strong>{loadDiagnostics.accepted}</strong> · Rejected: <strong>{loadDiagnostics.rejected.length}</strong></p>
+          <p style={{ margin: '0 0 6px' }}>Postal-area metadata loaded: <strong>{loadDiagnostics.fetched}</strong> · Available in Explorer: <strong>{loadDiagnostics.accepted}</strong></p>
           <p style={{ margin: '0 0 12px' }}>Pages fetched: {loadDiagnostics.pageCount} · Page size: {loadDiagnostics.pageSize}</p>
-          {loadDiagnostics.rejected.length === 0 ? <p>No records were rejected by the Explorer V3 validator.</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.postal_code || index} style={{ marginBottom: '10px' }}>
+          {loadDiagnostics.rejected.length === 0 ? <p>Map details are loaded separately when a place is selected.</p> : <ol style={{ margin: 0, paddingLeft: '22px' }}>{loadDiagnostics.rejected.map((record, index) => <li key={record.postal_code || index} style={{ marginBottom: '10px' }}>
             <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
             <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>{record.reasons.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul>
           </li>)}</ol>}
