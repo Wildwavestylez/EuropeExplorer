@@ -355,20 +355,20 @@ export default function App() {
 
   const startWithLocation = () => {
     setIntroMessage('')
-    if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : 'Location is not available on this device.'); return }
-    setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : 'Waiting for location permission…')
+    if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : lang === 'nl' ? 'Dit apparaat ondersteunt geen locatiebepaling.' : 'Location is not available on this device.'); return }
+    setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : lang === 'nl' ? 'Wachten op toestemming voor je locatie…' : 'Waiting for location permission…')
     navigator.geolocation.getCurrentPosition(position => {
       setMapStart([position.coords.latitude, position.coords.longitude])
       setSelected(null); setSelectedFact(null); setActiveMode('location')
       setIntroMessage('')
-    }, () => setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : 'Could not get your location. Check GPS permissions.'), { enableHighAccuracy: true, timeout: 12000 })
+    }, () => setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : lang === 'nl' ? 'Je locatie kon niet worden bepaald. Controleer de locatietoestemming.' : 'Could not get your location. Check GPS permissions.'), { enableHighAccuracy: true, timeout: 12000 })
   }
 
   const searchIntroPlace = async (event) => {
     event.preventDefault()
     const term = introSearch.trim()
     if (!term) return
-    setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : 'Searching for place…')
+    setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : lang === 'nl' ? 'Plaats zoeken…' : 'Searching for place…')
 
     const requestJson = async (url) => {
       const controller = new AbortController()
@@ -427,8 +427,8 @@ export default function App() {
 
       if (!coordinates) {
         setIntroMessage(lastError
-          ? (lang === 'cs' ? 'Vyhledávací služby jsou právě nedostupné. Zkus to prosím za chvíli.' : 'Search services are temporarily unavailable. Please try again shortly.')
-          : (lang === 'cs' ? 'Místo se nepodařilo najít. Zkus upřesnit název nebo přidat zemi.' : 'Place not found. Try a more specific name or add the country.'))
+          ? (lang === 'cs' ? 'Vyhledávací služby jsou právě nedostupné. Zkus to prosím za chvíli.' : lang === 'nl' ? 'De zoekdiensten zijn tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw.' : 'Search services are temporarily unavailable. Please try again shortly.')
+          : (lang === 'cs' ? 'Místo se nepodařilo najít. Zkus upřesnit název nebo přidat zemi.' : lang === 'nl' ? 'Plaats niet gevonden. Probeer een specifiekere naam of voeg het land toe.' : 'Place not found. Try a more specific name or add the country.'))
         return
       }
 
@@ -440,12 +440,12 @@ export default function App() {
       setIntroMessage('')
     } catch (error) {
       console.error('Place search failed:', error)
-      setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : 'Search failed. Please try again.')
+      setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : lang === 'nl' ? 'Zoeken is mislukt. Probeer het opnieuw.' : 'Search failed. Please try again.')
     }
   }
 
   const startExplorer = async () => {
-    setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : 'Finding a random discovery…')
+    setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
       // The map index contains one row per published fact with valid GPS coordinates.
       // Sampling this table makes every eligible fact equally likely, regardless of
@@ -492,7 +492,7 @@ export default function App() {
       setIntroMessage('')
     } catch (e) {
       console.error('Real Explorer failed:', e)
-      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : 'Could not load a random discovery. Please try again.')
+      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : lang === 'nl' ? 'De willekeurige ontdekking kon niet worden geladen. Probeer het opnieuw.' : 'Could not load a random discovery. Please try again.')
     }
   }
 
@@ -546,10 +546,10 @@ export default function App() {
         <p>{lang === 'cs' ? 'Objevuj zajímavá místa, příběhy a skrytá zákoutí Evropy.' : lang === 'nl' ? 'Ontdek bijzondere plekken, lokale verhalen en verborgen hoekjes van Europa.' : 'Discover remarkable places, local stories and hidden corners of Europe.'}</p>
       </div>
       <div className="welcome-options">
-        <button className="welcome-option" onClick={startWithLocation}><span className="welcome-icon"><MapPin size={21}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={18}/></button>
-        <form className="welcome-option welcome-search" onSubmit={searchIntroPlace}><span className="welcome-icon"><Search size={21}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : 'Search for a place'}</strong><input value={introSearch} onChange={e => setIntroSearch(e.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : 'City, town or postal code…'} /></span><button type="submit" aria-label="Search"><ArrowUpRight size={18}/></button></form>
-        <button className="welcome-option" onClick={openAreaPicker}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
-        <button className="welcome-option welcome-real" onClick={startExplorer}><span className="welcome-icon"><Compass size={22}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={18}/></button>
+        <button className="welcome-option" onClick={startWithLocation}><span className="welcome-icon"><MapPin size={21}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : lang === 'nl' ? 'Mijn huidige locatie' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : lang === 'nl' ? 'Ontdek bijzondere plekken in de buurt' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={18}/></button>
+        <form className="welcome-option welcome-search" onSubmit={searchIntroPlace}><span className="welcome-icon"><Search size={21}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={e => setIntroSearch(e.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label="Search"><ArrowUpRight size={18}/></button></form>
+        <button className="welcome-option" onClick={openAreaPicker}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
+        <button className="welcome-option welcome-real" onClick={startExplorer}><span className="welcome-icon"><Compass size={22}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={18}/></button>
       </div>
       {introMessage && <p className="welcome-message" role="status">{introMessage}</p>}
       <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : lang === 'nl' ? 'EUROPA WACHT OM ONTDEKT TE WORDEN' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
