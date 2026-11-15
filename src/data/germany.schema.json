@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TRAVEL German postcode stop — Content Standard V3.1",
-  "description": "Content Standard V3.1 schema with the shared 17-category map taxonomy and optional Dutch translation compatibility. Dutch is accepted when present but is not required for legacy publication.",
+  "description": "Content Standard V3.1 schema with the shared 17-category map taxonomy and all seven required language translations, including standard Netherlands Dutch (nl-NL).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -135,7 +135,8 @@
         "en",
         "es",
         "fr",
-        "it"
+        "it",
+        "nl"
       ],
       "properties": {
         "cs": {
@@ -159,7 +160,8 @@
         "nl": {
           "$ref": "#/$defs/translation"
         }
-      }
+      },
+      "description": "All seven translations are mandatory for publication. Each language must include representative_place and a complete facts array with matching fact IDs."
     }
   },
   "$defs": {
