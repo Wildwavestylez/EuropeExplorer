@@ -27,7 +27,7 @@ export function getV3RecordRejectionReasons(content, countryCode) {
   }
   if (Array.isArray(content.facts)) {
     const baseIds = content.facts.map(fact => fact.id)
-    for (const language of ['cs', 'de', 'en', 'es', 'fr', 'it']) {
+    for (const language of ['cs', 'de', 'en', 'es', 'fr', 'it', 'nl']) {
       const translatedFacts = content.translations?.[language]?.facts
       if (!Array.isArray(translatedFacts)) reasons.push(`V3 rule: translations.${language}.facts is missing or not an array`)
       else if (translatedFacts.length !== baseIds.length) reasons.push(`V3 rule: translations.${language}.facts has ${translatedFacts.length} items; expected ${baseIds.length}`)
@@ -35,17 +35,7 @@ export function getV3RecordRejectionReasons(content, countryCode) {
         if (fact.id !== baseIds[index]) reasons.push(`V3 rule: translations.${language}.facts[${index}].id does not match base fact id ${baseIds[index]}`)
       })
     }
-    // Dutch is optional during the transition: validate it when supplied, but do not
-    // exclude existing six-language records while the dataset is being translated.
-    if (content.translations?.nl !== undefined) {
-      const dutchTranslation = content.translations.nl
-      const translatedFacts = dutchTranslation && typeof dutchTranslation === 'object' ? dutchTranslation.facts : null
-      if (!Array.isArray(translatedFacts)) reasons.push('V3 rule: translations.nl.facts is missing or not an array')
-      else if (translatedFacts.length !== baseIds.length) reasons.push(`V3 rule: translations.nl.facts has ${translatedFacts.length} items; expected ${baseIds.length}`)
-      else translatedFacts.forEach((fact, index) => {
-        if (fact.id !== baseIds[index]) reasons.push(`V3 rule: translations.nl.facts[${index}].id does not match base fact id ${baseIds[index]}`)
-      })
-    }
+
   }
   return reasons
 }
