@@ -194,7 +194,8 @@
         "text",
         "category",
         "priority",
-        "sources"
+        "sources",
+        "map_category"
       ],
       "properties": {
         "id": {
@@ -273,7 +274,7 @@
             "personality",
             "sports_venue"
           ],
-          "description": "Optional for legacy records. When present, single primary map category for the specific subject of this fact; personality identifies person-centred facts."
+          "description": "Single primary map category for the specific subject of this fact. Required for every fact. Use personality for facts whose primary subject is a specific person, regardless of the physical site used for the map location."
         }
       }
     },
@@ -580,5 +581,5 @@
       }
     }
   },
-  "$comment": "CONTENT STANDARD V3.1: every newly enriched fact should have one map_category. Legacy published records without map_category remain displayable; the interface falls back to the existing editorial category. personality identifies person-centred facts independently of their physical pin location."
+  "$comment": "CONTENT STANDARD V3.1: every fact must include exactly one map_category from the shared 17-value TRAVEL taxonomy. This is mandatory for all records; no legacy fallback to editorial category is permitted. personality identifies person-centred facts independently of their physical pin location."
 }
