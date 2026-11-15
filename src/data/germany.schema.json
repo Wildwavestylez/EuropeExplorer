@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TRAVEL German postcode stop — Content Standard V3.1",
-  "description": "Content Standard V3.1 schema, including explicit fact-level map categories, cultural venues, and legacy compatibility for records without map_category.",
+  "description": "Content Standard V3.1 schema with the shared 17-category map taxonomy and optional Dutch translation compatibility. Dutch is accepted when present but is not required for legacy publication.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -155,6 +155,9 @@
         },
         "it": {
           "$ref": "#/$defs/translation"
+        },
+        "nl": {
+          "$ref": "#/$defs/translation"
         }
       }
     }
@@ -251,15 +254,22 @@
           "type": "string",
           "enum": [
             "castle",
-            "cultural_site",
+            "religious_site",
             "historical_monument",
-            "nature",
-            "viewpoint_landscape",
+            "architecture",
             "historic_city",
             "museum",
-            "religious_site",
+            "archaeological_site",
+            "nature",
+            "viewpoint_landscape",
+            "park_garden",
             "technical_heritage",
-            "personality"
+            "cultural_site",
+            "visitor_attraction",
+            "local_culture",
+            "science_site",
+            "personality",
+            "sports_venue"
           ],
           "description": "Optional for legacy records. When present, single primary map category for the specific subject of this fact; personality identifies person-centred facts."
         }
