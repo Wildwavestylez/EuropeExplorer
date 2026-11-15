@@ -38,7 +38,8 @@ export function getV3RecordRejectionReasons(content, countryCode) {
     // Dutch is optional during the transition: validate it when supplied, but do not
     // exclude existing six-language records while the dataset is being translated.
     if (content.translations?.nl !== undefined) {
-      const translatedFacts = content.translations.nl.facts
+      const dutchTranslation = content.translations.nl
+      const translatedFacts = dutchTranslation && typeof dutchTranslation === 'object' ? dutchTranslation.facts : null
       if (!Array.isArray(translatedFacts)) reasons.push('V3 rule: translations.nl.facts is missing or not an array')
       else if (translatedFacts.length !== baseIds.length) reasons.push(`V3 rule: translations.nl.facts has ${translatedFacts.length} items; expected ${baseIds.length}`)
       else translatedFacts.forEach((fact, index) => {
