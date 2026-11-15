@@ -17,6 +17,7 @@ const categoryLabels = {
   es: { castle:'Castillo', cultural_site:'Espacio cultural', historical_monument:'Monumento histórico', nature:'Naturaleza', viewpoint_landscape:'Mirador / paisaje', historic_city:'Ciudad histórica', museum:'Museo', religious_site:'Lugar religioso', technical_heritage:'Patrimonio técnico', personality:'Personalidad' },
   fr: { castle:'Château', cultural_site:'Lieu culturel', historical_monument:'Monument historique', nature:'Nature', viewpoint_landscape:'Belvédère / paysage', historic_city:'Ville historique', museum:'Musée', religious_site:'Site religieux', technical_heritage:'Patrimoine technique', personality:'Personnalité' },
   it: { castle:'Castello', cultural_site:'Luogo culturale', historical_monument:'Monumento storico', nature:'Natura', viewpoint_landscape:'Belvedere / paesaggio', historic_city:'Città storica', museum:'Museo', religious_site:'Luogo religioso', technical_heritage:'Patrimonio tecnico', personality:'Personalità' },
+  nl: { castle:'Kasteel', religious_site:'Religieuze locatie', historical_monument:'Historisch monument', architecture:'Architectuur', historic_city:'Historische stad', museum:'Museum', archaeological_site:'Archeologische vindplaats', nature:'Natuur', viewpoint_landscape:'Uitzichtpunt / landschap', park_garden:'Park / tuin', technical_heritage:'Technisch erfgoed', cultural_site:'Culturele locatie', visitor_attraction:'Bezienswaardigheid', local_culture:'Lokale cultuur', science_site:'Wetenschappelijke locatie', personality:'Persoonlijkheid', sports_venue:'Sportlocatie' },
 }
 
 const dragLabels = {
@@ -26,6 +27,7 @@ const dragLabels = {
   es: { hint:'DESLIZA HACIA ARRIBA PARA LEER MÁS', expanded:'DESLIZA HACIA ABAJO PARA CERRAR' },
   fr: { hint:'FAITES GLISSER VERS LE HAUT POUR LIRE', expanded:'FAITES GLISSER VERS LE BAS POUR RÉDUIRE' },
   it: { hint:'TRASCINA IN ALTO PER LEGGERE DI PIÙ', expanded:'TRASCINA IN BASSO PER RIDURRE' },
+  nl: { hint:'VEEG OMHOOG OM MEER TE LEZEN', expanded:'VEEG OMLAAG OM TE SLUITEN' },
 }
 
 export default function FactClusterLayer({ places, lang, onSelectFact }) {
