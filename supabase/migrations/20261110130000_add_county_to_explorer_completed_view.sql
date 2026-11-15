@@ -23,7 +23,7 @@ WITH schema_def AS (
     )
     AND NOT EXISTS (
       SELECT 1
-      FROM unnest(ARRAY['cs','de','en','es','fr','it']) language(code)
+      FROM unnest(ARRAY['cs','de','en','es','fr','it','nl']) language(code)
       WHERE jsonb_typeof((pc_1.content -> 'translations') -> language.code -> 'facts') IS DISTINCT FROM 'array'
          OR jsonb_array_length((pc_1.content -> 'translations') -> language.code -> 'facts')
             IS DISTINCT FROM jsonb_array_length(pc_1.content -> 'facts')
