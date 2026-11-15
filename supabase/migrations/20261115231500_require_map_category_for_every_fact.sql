@@ -6,15 +6,15 @@ SET schema = jsonb_set(
   jsonb_set(
     jsonb_set(
       schema,
-      '{ $defs, fact, required }',
-      (schema #> '{ $defs, fact, required }') || '["map_category"]'::jsonb,
+      '{$defs,fact,required}',
+      (schema #> '{$defs,fact,required}') || '["map_category"]'::jsonb,
       true
     ),
-    '{ $defs, fact, properties, map_category, enum }',
+    '{$defs,fact,properties,map_category,enum}',
     '["castle","religious_site","historical_monument","architecture","historic_city","museum","archaeological_site","nature","viewpoint_landscape","park_garden","technical_heritage","cultural_site","visitor_attraction","local_culture","science_site","personality","sports_venue"]'::jsonb,
     true
   ),
-  '{ $defs, fact, properties, map_category, description }',
+  '{$defs,fact,properties,map_category,description}',
   '"Single primary map category for the specific subject of this fact. Required for every fact. Use personality for facts whose primary subject is a specific person, regardless of the physical site used for the map location."'::jsonb,
   true
 ),
