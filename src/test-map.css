@@ -1,0 +1,24 @@
+html,body,#test-root{width:100%;height:100%;min-height:100%;margin:0}
+.icon-lab-shell{width:100%;height:100dvh;max-width:none;display:flex;flex-direction:column;overflow:hidden}
+.icon-lab-topbar{height:64px;min-height:64px;padding:0 28px;flex:none}
+.icon-lab-label{display:flex;align-items:center;gap:9px;color:#91a2ae;font:9px 'DM Mono',monospace;letter-spacing:1.3px}
+.icon-lab-map-wrap{position:relative;flex:1;min-height:0;background:#dbe1dc}
+.icon-lab-map{position:absolute;inset:0;width:100%;height:100%;min-height:0;background:#dbe1dc}
+.icon-lab-map-topline{height:40px;padding:0 16px}
+.icon-lab-legend{position:absolute;z-index:500;left:14px;bottom:14px;display:flex;align-items:center;gap:9px;padding:10px 12px;background:#17283aeb;color:#aab7c0;font:8px 'DM Mono',monospace;letter-spacing:1px}
+.icon-lab-legend span{width:6px;height:6px;border-radius:50%;background:#f2a65a}
+.icon-lab-marker{background:transparent;border:0}
+.icon-lab-emoji{display:flex;align-items:center;justify-content:center;width:38px;height:42px;font-size:27px;line-height:1;filter:drop-shadow(0 2px 3px #101c2bcc);transform-origin:50% 85%;transition:transform .15s ease}
+.icon-lab-marker:hover .icon-lab-emoji{transform:scale(1.2)}
+.icon-lab-cluster{background:transparent;border:0}
+.icon-lab-cluster-count{display:grid;place-items:center;width:42px;height:42px;border:2px solid #f2a65a;border-radius:50%;background:#284f68;color:#f4f0e8;font:600 11px 'DM Mono',monospace;box-shadow:0 2px 10px #101c2b66}
+.icon-lab-popup{display:flex;flex-direction:column;gap:4px;min-width:145px}
+.icon-lab-popup strong{color:#f2a65a;font:700 12px Manrope,sans-serif}
+.icon-lab-popup span,.icon-lab-popup small{color:#aab7c0;font:9px 'DM Mono',monospace}
+@media(max-width:700px){
+  .icon-lab-topbar{height:calc(58px + env(safe-area-inset-top));min-height:calc(58px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 14px 0}
+  .icon-lab-label{font-size:7px;letter-spacing:.7px}
+  .icon-lab-map-topline{height:36px;padding:0 10px;font-size:7px}
+  .icon-lab-legend{left:8px;bottom:calc(8px + env(safe-area-inset-bottom));padding:8px;font-size:7px}
+  .icon-lab-emoji{font-size:25px}
+}
