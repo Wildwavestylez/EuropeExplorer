@@ -589,10 +589,7 @@ export default function App() {
           const pageSize = 1000
           while (true) {
             const { data, error } = await supabase
-              .from('explorer_map_points')
-              .select('postal_id,lat,lon')
-              .in('postal_id', batch)
-              .order('postal_id')
+              .rpc('get_explorer_area_map_points', { p_postal_ids: batch })
               .range(from, from + pageSize - 1)
             if (error) throw error
             const page = data || []
