@@ -79,7 +79,7 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces }) {
+function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds }) {
   const map = useMap()
   useEffect(() => {
     // Only an explicit Random Explorer request may move the map to a selected fact.
@@ -90,6 +90,11 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
       return
     }
     if (selectedFact) return
+    // An explicit area-picker selection takes priority over postal-code marker bounds.
+    if (activeMode === 'area' && Array.isArray(areaBounds) && areaBounds.length === 2) {
+      map.flyToBounds(areaBounds, { padding: [36, 36], maxZoom: 11, duration: 1.0 })
+      return
+    }
     if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
     } else if (activeMode === 'area' && Array.isArray(areaPlaces)) {
@@ -110,7 +115,7 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
     } else {
       map.setView([51.1657, 10.4515], 6, { animate: true })
     }
-  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, map])
+  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, map])
   return null
 }
 
@@ -145,6 +150,7 @@ export default function App() {
   const [areaCountry, setAreaCountry] = useState('')
   const [areaState, setAreaState] = useState('')
   const [areaCounty, setAreaCounty] = useState('')
+  const [areaBounds, setAreaBounds] = useState(null)
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -239,8 +245,36 @@ export default function App() {
     setAreaPickerOpen(true)
     setIntroMessage('')
   }
-  const confirmAreaPicker = () => {
+  const confirmAreaPicker = async () => {
     if (!areaCountry) return
+
+    // Resolve the selected administrative area to its real geographic bounding box.
+    // Postal-code points remain the fallback if the geocoder has no matching boundary.
+    const countryName = areaCountry === 'DE' ? 'Germany' : areaCountry === 'CZ' ? 'Czechia' : areaCountry
+    const areaName = areaCounty || areaState || countryName
+    const searchTerm = [areaName, areaCounty && areaState ? areaState : '', countryName]
+      .filter(Boolean).join(', ')
+    let bounds = null
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(searchTerm)}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      if (response.ok) {
+        const results = await response.json()
+        const box = results?.[0]?.boundingbox?.map(Number)
+        if (box?.length === 4 && box.every(Number.isFinite)) {
+          const [south, north, west, east] = box
+          if (south >= -90 && north <= 90 && west >= -180 && east <= 180 && south <= north && west <= east) {
+            bounds = [[south, west], [north, east]]
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not resolve selected area boundary; using published postal-area points:', error)
+    }
+
+    setAreaBounds(bounds)
     setCountry(areaCountry)
     setSelectedState(areaState)
     setSelectedCounty(areaCounty)
@@ -603,7 +637,7 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} />
+            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} />
             <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
