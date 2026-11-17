@@ -120,7 +120,7 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
 }
 
 function getState(place) {
-  return place.content?.state || place.region || ''
+  return place.region || place.content?.state || ''
 }
 
 function getCounty(place) {
@@ -313,19 +313,42 @@ export default function App() {
         let from = 0
         let all = []
         let pageCount = 0
-        while (true) {
-          const { data, error } = await supabase
-            .from('postal_codes_explorer_completed')
-            .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,county')
-            .eq('country_code', country)
-            .order('postal_code')
-            .range(from, from + pageSize - 1)
-          if (error) throw error
-          const page = data || []
-          pageCount += 1
-          all = all.concat(page)
-          if (page.length < pageSize) break
-          from += pageSize
+        if (country === 'DE') {
+          while (true) {
+            const { data, error } = await supabase
+              .from('postal_codes_explorer_completed')
+              .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,county')
+              .eq('country_code', country)
+              .order('postal_code')
+              .range(from, from + pageSize - 1)
+            if (error) throw error
+            const page = data || []
+            pageCount += 1
+            all = all.concat(page)
+            if (page.length < pageSize) break
+            from += pageSize
+          }
+        } else {
+          // Czechia's published areas are listed from postal_codes directly;
+          // the completed V3 view currently contains Germany only.
+          while (true) {
+            const { data, error } = await supabase
+              .from('postal_codes')
+              .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
+              .eq('country_code', country)
+              .eq('status', 'published')
+              .order('postal_code')
+              .range(from, from + pageSize - 1)
+            if (error) throw error
+            const page = (data || []).map(row => ({
+              ...row,
+              county: row.content?.county || '',
+            }))
+            pageCount += 1
+            all = all.concat(page)
+            if (page.length < pageSize) break
+            from += pageSize
+          }
         }
         if (!alive) return
         setPlaces(all)
