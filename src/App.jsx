@@ -245,36 +245,13 @@ export default function App() {
     setAreaPickerOpen(true)
     setIntroMessage('')
   }
-  const confirmAreaPicker = async () => {
+  const confirmAreaPicker = () => {
     if (!areaCountry) return
 
-    // Resolve the selected administrative area to its real geographic bounding box.
-    // Postal-code points remain the fallback if the geocoder has no matching boundary.
-    const countryName = areaCountry === 'DE' ? 'Germany' : areaCountry === 'CZ' ? 'Czechia' : areaCountry
-    const areaName = areaCounty || areaState || countryName
-    const searchTerm = [areaName, areaCounty && areaState ? areaState : '', countryName]
-      .filter(Boolean).join(', ')
-    let bounds = null
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(searchTerm)}`,
-        { headers: { Accept: 'application/json' } }
-      )
-      if (response.ok) {
-        const results = await response.json()
-        const box = results?.[0]?.boundingbox?.map(Number)
-        if (box?.length === 4 && box.every(Number.isFinite)) {
-          const [south, north, west, east] = box
-          if (south >= -90 && north <= 90 && west >= -180 && east <= 180 && south <= north && west <= east) {
-            bounds = [[south, west], [north, east]]
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Could not resolve selected area boundary; using published postal-area points:', error)
-    }
-
-    setAreaBounds(bounds)
+    // Use only the postal areas already present in the published Explorer data.
+    // The map will fit the representative points after the selected country's
+    // published records have loaded; no external geocoder or future areas.
+    setAreaBounds(null)
     setCountry(areaCountry)
     setSelectedState(areaState)
     setSelectedCounty(areaCounty)
