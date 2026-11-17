@@ -183,6 +183,28 @@ export default function App() {
           if (page.length < pageSize) break
           from += pageSize
         }
+        // Czechia's already-published records are present in explorer_map_points,
+        // but the completed view currently validates Germany only. Include published
+        // Czech records directly so the manual area picker matches the live map.
+        let czFrom = 0
+        while (true) {
+          const { data, error } = await supabase
+            .from('postal_codes')
+            .select('country_code,region,content')
+            .eq('country_code', 'CZ')
+            .eq('status', 'published')
+            .order('postal_code')
+            .range(czFrom, czFrom + pageSize - 1)
+          if (error) throw error
+          const page = data || []
+          records = records.concat(page.map(row => ({
+            country_code: row.country_code,
+            region: row.region || row.content?.state || '',
+            county: row.content?.county || '',
+          })))
+          if (page.length < pageSize) break
+          czFrom += pageSize
+        }
         if (!alive) return
         setAreaCatalog(records)
         const availableCountries = [...new Set(records.map(row => row.country_code).filter(Boolean))].sort()
