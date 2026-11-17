@@ -79,7 +79,7 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds }) {
+function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, areaMapPoints }) {
   const map = useMap()
   useEffect(() => {
     // Only an explicit Random Explorer request may move the map to a selected fact.
@@ -97,18 +97,11 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
     }
     if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
-    } else if (activeMode === 'area' && Array.isArray(areaPlaces)) {
-      const points = areaPlaces
-        .map(item => [
-          Number(item.latitude ?? item.content?.representative_point?.lat),
-          Number(item.longitude ?? item.content?.representative_point?.lon),
-        ])
-        .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)
-          && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
-      if (points.length === 1) {
-        map.flyTo(points[0], 12, { duration: 0.8 })
-      } else if (points.length > 1) {
-        map.flyToBounds(points, { padding: [48, 48], maxZoom: 13, duration: 0.9 })
+    } else if (activeMode === 'area' && Array.isArray(areaMapPoints)) {
+      if (areaMapPoints.length === 1) {
+        map.flyTo(areaMapPoints[0], 14, { duration: 0.8 })
+      } else if (areaMapPoints.length > 1) {
+        map.flyToBounds(areaMapPoints, { padding: [48, 48], maxZoom: 13, duration: 0.9 })
       } else if (Array.isArray(mapStart) && mapStart.length === 2) {
         map.flyTo([Number(mapStart[0]), Number(mapStart[1])], 6, { duration: 0.8 })
       }
@@ -118,7 +111,7 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
     } else {
       map.setView([51.1657, 10.4515], 6, { animate: true })
     }
-  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, map])
+  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, areaMapPoints, map])
   return null
 }
 
@@ -154,6 +147,7 @@ export default function App() {
   const [areaState, setAreaState] = useState('')
   const [areaCounty, setAreaCounty] = useState('')
   const [areaBounds, setAreaBounds] = useState(null)
+  const [areaMapPoints, setAreaMapPoints] = useState([])
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -571,6 +565,55 @@ export default function App() {
     })
   }, [places, query, selectedState, selectedCounty])
 
+  // Area navigation uses the exact fact pins already stored in explorer_map_points.
+  // The postal records above are used only to identify which published postal areas
+  // belong to the selected country/state/county.
+  useEffect(() => {
+    let alive = true
+    async function loadAreaMapPoints() {
+      if (activeMode !== 'area') {
+        setAreaMapPoints([])
+        return
+      }
+      const ids = filtered.map(place => place.id).filter(id => id != null)
+      if (!ids.length) {
+        setAreaMapPoints([])
+        return
+      }
+      try {
+        const points = []
+        const idBatchSize = 100
+        for (let offset = 0; offset < ids.length; offset += idBatchSize) {
+          const batch = ids.slice(offset, offset + idBatchSize)
+          let from = 0
+          const pageSize = 1000
+          while (true) {
+            const { data, error } = await supabase
+              .from('explorer_map_points')
+              .select('postal_id,lat,lon')
+              .in('postal_id', batch)
+              .order('postal_id')
+              .range(from, from + pageSize - 1)
+            if (error) throw error
+            const page = data || []
+            points.push(...page)
+            if (page.length < pageSize) break
+            from += pageSize
+          }
+        }
+        if (alive) setAreaMapPoints(points
+          .map(point => [Number(point.lat), Number(point.lon)])
+          .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)
+            && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180))
+      } catch (error) {
+        console.error('Could not load selected area map points:', error)
+        if (alive) setAreaMapPoints([])
+      }
+    }
+    loadAreaMapPoints()
+    return () => { alive = false }
+  }, [activeMode, filtered])
+
   const localizedFacts = selected ? getLocalizedFacts(selected.content, lang) : []
   const facts = selectedFact
     ? localizedFacts.filter(fact => fact.id === selectedFact.id)
@@ -640,7 +683,7 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} />
+            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
             <ViewportFactLayer onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
