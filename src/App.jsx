@@ -99,7 +99,10 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
       map.flyTo([Number(place.latitude), Number(place.longitude)], 12, { duration: 0.8 })
     } else if (activeMode === 'area' && Array.isArray(areaPlaces)) {
       const points = areaPlaces
-        .map(item => [Number(item.latitude), Number(item.longitude)])
+        .map(item => [
+          Number(item.latitude ?? item.content?.representative_point?.lat),
+          Number(item.longitude ?? item.content?.representative_point?.lon),
+        ])
         .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)
           && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
       if (points.length === 1) {
