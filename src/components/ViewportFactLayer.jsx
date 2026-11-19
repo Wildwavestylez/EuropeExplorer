@@ -35,7 +35,7 @@ function makeMarker(point, zoom) {
   })
 }
 
-export default function ViewportFactLayer({ onSelectFact }) {
+export default function ViewportFactLayer({ onSelectFact, country = 'DE', mapPoints = [] }) {
   const map = useMap()
   const cacheRef = useRef(new Map())
   const requestRef = useRef(null)
@@ -55,33 +55,43 @@ export default function ViewportFactLayer({ onSelectFact }) {
       typeof v === 'number' ? v.toFixed(3) : v
     ).join(':')
 
-    let points = cacheRef.current.get(key)
-    if (!points) {
-      requestRef.current?.abort()
-      const controller = new AbortController()
-      requestRef.current = controller
-      const { data, error } = await supabase.rpc('get_explorer_map_points_v2', {
-        p_south: south,
-        p_west: west,
-        p_north: north,
-        p_east: east,
-        p_zoom: zoom,
-        p_limit: MAX_POINTS,
-      }).abortSignal(controller.signal)
+    let points
+    if (country === 'SK') {
+      // Slovakia is GitHub-only. Its compact V5/published manifest supplies
+      // fact-level coordinates; filter locally to the current map viewport.
+      points = mapPoints.filter(point =>
+        Number.isFinite(point.lat) && Number.isFinite(point.lon)
+        && point.lat >= south && point.lat <= north
+        && point.lon >= west && point.lon <= east
+      ).map(point => ({ ...point, is_cluster: false }))
+    } else {
+      points = cacheRef.current.get(key)
+      if (!points) {
+        requestRef.current?.abort()
+        const controller = new AbortController()
+        requestRef.current = controller
+        const { data, error } = await supabase.rpc('get_explorer_map_points_v2', {
+          p_south: south,
+          p_west: west,
+          p_north: north,
+          p_east: east,
+          p_zoom: zoom,
+          p_limit: MAX_POINTS,
+        }).abortSignal(controller.signal)
 
-      if (controller.signal.aborted) return
-      if (error) {
-        console.error('Explorer map viewport query failed:', error)
-        return
+        if (controller.signal.aborted) return
+        if (error) {
+          console.error('Explorer map viewport query failed:', error)
+          return
+        }
+        points = data || []
+        cacheRef.current.set(key, points)
+        if (cacheRef.current.size > CACHE_LIMIT) {
+          cacheRef.current.delete(cacheRef.current.keys().next().value)
+        }
       }
-      points = data || []
-      cacheRef.current.set(key, points)
-      if (cacheRef.current.size > CACHE_LIMIT) {
-        cacheRef.current.delete(cacheRef.current.keys().next().value)
-      }
+      if (requestRef.current?.signal.aborted) return
     }
-
-    if (requestRef.current?.signal.aborted) return
     const layer = layerRef.current
     if (!layer) return
     layer.clearLayers()
@@ -91,21 +101,22 @@ export default function ViewportFactLayer({ onSelectFact }) {
       if (!point.is_cluster) {
         marker.on('click', () => {
           callbackRef.current?.({
-            id: point.id,
-            postal_code: point.postal_code,
+            id: point.postal_id || point.id || (point.postcode ? 'SK:' + point.postcode : null),
+            country_code: point.country_code || country,
+            postal_code: point.postcode || point.postal_code,
             city: point.city,
           }, {
             id: point.fact_id,
             title: point.title,
             category: point.category,
-            map_category: point.category,
+            map_category: point.map_category || point.category,
             location: { lat: point.lat, lon: point.lon },
           })
         })
       }
       layer.addLayer(marker)
     })
-  }, [map])
+  }, [map, country, mapPoints])
 
   useEffect(() => {
     const layer = L.markerClusterGroup({
