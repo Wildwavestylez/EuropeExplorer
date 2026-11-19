@@ -48,7 +48,9 @@ async function getSlovakiaExplorerIndex() {
         }
         const tileKeys = new Set(index.tile_keys)
         for (const key of index.tile_keys) {
-          if (!/^([4-8])\\/(\\d+)\\/(\\d+)$/.test(key)) {
+          const parts = key.split('/')
+          if (parts.length !== 3 || !['4', '5', '6', '7', '8'].includes(parts[0])
+            || !parts.slice(1).every(part => /^\\d+$/.test(part))) {
             throw new Error('Slovak Explorer index contains an invalid map tile key.')
           }
         }
