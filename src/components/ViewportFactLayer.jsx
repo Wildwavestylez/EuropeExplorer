@@ -102,10 +102,10 @@ export default function ViewportFactLayer({ onSelectFact, country = 'DE', tileKe
         tileCacheRef.current.set(tileKey, tilePoints)
         if (tileCacheRef.current.size > 48) tileCacheRef.current.delete(tileCacheRef.current.keys().next().value)
         return tilePoints
-      }).catch(error => {
+      })).catch(error => {
         if (!controller.signal.aborted) console.error('Could not load Slovak viewport tiles:', error)
         return []
-      }))
+      })
       if (controller.signal.aborted) return
       points = loaded.flat().filter(point =>
         Number.isFinite(point.lat) && Number.isFinite(point.lon)
