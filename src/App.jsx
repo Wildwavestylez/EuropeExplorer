@@ -4,6 +4,59 @@ import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, Sliders
 import { supabase } from './lib/supabase'
 import ViewportFactLayer from './components/ViewportFactLayer'
 
+const SLOVAKIA_INDEX_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_index.json'
+const SLOVAKIA_RECORDS_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/records/'
+let slovakiaExplorerIndexPromise = null
+const slovakiaRecordCache = new Map()
+
+async function getSlovakiaExplorerIndex() {
+  if (!slovakiaExplorerIndexPromise) {
+    slovakiaExplorerIndexPromise = fetch(SLOVAKIA_INDEX_URL, { headers: { Accept: 'application/json' } })
+      .then(async response => {
+        if (!response.ok) throw new Error(`Slovak Explorer index returned HTTP ${response.status}`)
+        const index = await response.json()
+        if (index.country_code !== 'SK' || index.data_version !== 5
+          || !Array.isArray(index.records) || !Array.isArray(index.map_points)
+          || index.count !== index.records.length) {
+          throw new Error('Slovak Explorer index has an invalid structure or version.')
+        }
+        const postcodes = new Set()
+        for (const record of index.records) {
+          if (!record || !/^\\d{5}$/.test(record.postcode || '')
+            || record.status !== 'published' || record.data_version !== 5
+            || postcodes.has(record.postcode)) {
+            throw new Error('Slovak Explorer index contains a non-V5, unpublished or duplicate record.')
+          }
+          postcodes.add(record.postcode)
+        }
+        for (const point of index.map_points) {
+          if (!point || !postcodes.has(point.postcode) || !point.fact_id
+            || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)
+            || point.lat < -90 || point.lat > 90 || point.lon < -180 || point.lon > 180) {
+            throw new Error('Slovak Explorer index contains an invalid fact-map point.')
+          }
+        }
+        return index
+      })
+      .catch(error => { slovakiaExplorerIndexPromise = null; throw error })
+  }
+  return slovakiaExplorerIndexPromise
+}
+
+async function getSlovakiaRecord(postcode) {
+  if (slovakiaRecordCache.has(postcode)) return slovakiaRecordCache.get(postcode)
+  const response = await fetch(SLOVAKIA_RECORDS_URL + encodeURIComponent(postcode) + '.json', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) throw new Error(`Slovak record ${postcode} returned HTTP ${response.status}`)
+  const record = await response.json()
+  if (record.postcode !== postcode || record.status !== 'published' || record.data_version !== 5) {
+    throw new Error(`Slovak record ${postcode} is not a published V5 record.`)
+  }
+  slovakiaRecordCache.set(postcode, record)
+  return record
+}
+
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' }, { id: 'nl', label: 'NL' }, 
@@ -126,6 +179,7 @@ function getCounty(place) {
 
 export default function App() {
   const [places, setPlaces] = useState([])
+  const [slovakiaMapPoints, setSlovakiaMapPoints] = useState([])
   const [activeMode, setActiveMode] = useState('')
   const [introSearch, setIntroSearch] = useState('')
   const [introMessage, setIntroMessage] = useState('')
@@ -208,6 +262,10 @@ export default function App() {
           if (page.length < pageSize) break
           czFrom += pageSize
         }
+        const skIndex = await getSlovakiaExplorerIndex()
+        records = records.concat(skIndex.records.map(record => ({
+          country_code: 'SK', region: record.state || '', county: record.county || '',
+        })))
         if (!alive) return
         setAreaCatalog(records)
         const availableCountries = [...new Set(records.map(row => row.country_code).filter(Boolean))].sort()
@@ -264,6 +322,15 @@ export default function App() {
   }
 
   const handlePlaceSelect = useCallback(async (place) => {
+    if (place.country_code === 'SK') {
+      try {
+        const content = await getSlovakiaRecord(place.postal_code)
+        setSelected({ ...place, content })
+        setRandomFocusPoint(null)
+        setSelectedFact(null)
+      } catch (error) { console.error('Could not load Slovak postal-area details:', error) }
+      return
+    }
     const { data, error } = await supabase
       .from('postal_codes')
       .select('content')
@@ -279,6 +346,19 @@ export default function App() {
   }, [])
 
   const handleFactSelect = useCallback(async (place, fact) => {
+    if (place.country_code === 'SK') {
+      try {
+        const content = await getSlovakiaRecord(place.postal_code)
+        const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
+        if (!canonicalFact) throw new Error('Selected fact is not present in the published Slovak record.')
+        setSelected({ ...place, content })
+        setRandomFocusPoint(null)
+        setSelectedFact(canonicalFact)
+        setFactSheetExpanded(false)
+        setFactSheetOpen(true)
+      } catch (error) { console.error('Could not load Slovak fact details:', error) }
+      return
+    }
     const { data, error } = await supabase
       .from('postal_codes')
       .select('content')
@@ -310,6 +390,30 @@ export default function App() {
         let from = 0
         let all = []
         let pageCount = 0
+        if (country !== 'SK') setSlovakiaMapPoints([])
+        if (country === 'SK') {
+          const index = await getSlovakiaExplorerIndex()
+          all = index.records.map(record => ({
+            id: 'SK:' + record.postcode,
+            country_code: 'SK',
+            postal_code: record.postcode,
+            city: record.city,
+            municipality: record.city,
+            district: record.district || '',
+            region: record.state || '',
+            county: record.county || '',
+            latitude: record.representative_point?.lat ?? null,
+            longitude: record.representative_point?.lon ?? null,
+            data_version: 5,
+            status: 'published',
+          }))
+          pageCount = 1
+          if (!alive) return
+          setPlaces(all)
+          setSlovakiaMapPoints(index.map_points)
+          setLoadDiagnostics(null)
+          return
+        }
         if (country === 'DE') {
           while (true) {
             const { data, error } = await supabase
@@ -575,6 +679,13 @@ export default function App() {
         setAreaMapPoints([])
         return
       }
+      if (country === 'SK') {
+        const visiblePostcodes = new Set(filtered.map(place => place.postal_code))
+        setAreaMapPoints(slovakiaMapPoints.filter(point => visiblePostcodes.has(point.postcode))
+          .map(point => [Number(point.lat), Number(point.lon)])
+          .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
+        return
+      }
       const ids = filtered.map(place => place.id).filter(id => id != null)
       if (!ids.length) {
         setAreaMapPoints([])
@@ -609,7 +720,7 @@ export default function App() {
     }
     loadAreaMapPoints()
     return () => { alive = false }
-  }, [activeMode, filtered])
+  }, [activeMode, filtered, country, slovakiaMapPoints])
 
   const localizedFacts = selected ? getLocalizedFacts(selected.content, lang) : []
   const facts = selectedFact
@@ -673,15 +784,15 @@ export default function App() {
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
-          <div className="panel-foot"><span className="status-dot" /> {u.live}</div>
+          <div className="panel-foot"><span className="status-dot" /> {country === 'SK' ? u.liveGithub : u.live}</div>
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
+          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : country === 'SK' ? u.slovakia : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
-            <ViewportFactLayer onSelectFact={handleFactSelect} />
+            <ViewportFactLayer country={country} mapPoints={slovakiaMapPoints} onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
@@ -716,7 +827,7 @@ export default function App() {
         <h2 id="area-picker-title">{lang === 'cs' ? 'Kam se chceš podívat?' : lang === 'de' ? 'Wohin möchtest du?' : lang === 'nl' ? 'Waar wil je op ontdekking?' : 'Where would you like to explore?'}</h2>
         <p>{lang === 'cs' ? 'Vyber zemi a potom můžeš výběr upřesnit podle regionu a okresu.' : lang === 'de' ? 'Wähle ein Land und grenze die Auswahl nach Region und Landkreis ein.' : lang === 'nl' ? 'Kies een land en verfijn je selectie daarna op regio en district.' : 'Choose a country, then narrow your selection by region and district.'}</p>
         {areaCatalogLoading ? <div className="area-picker-status"><LoaderCircle className="spin" size={18}/>{lang === 'cs' ? 'Načítám dostupné oblasti…' : lang === 'nl' ? 'Beschikbare gebieden laden…' : 'Loading available areas…'}</div> : areaCatalogError ? <div className="area-picker-error">{areaCatalogError}</div> : areaCountries.length === 0 ? <div className="area-picker-status">{lang === 'cs' ? 'Zatím nejsou dostupné žádné publikované oblasti.' : lang === 'nl' ? 'Er zijn nog geen gepubliceerde gebieden beschikbaar.' : 'No published areas are available yet.'}</div> : <>
-          <label className="area-picker-field"><span>{lang === 'cs' ? 'ZEMĚ' : lang === 'de' ? 'LAND' : lang === 'nl' ? 'LAND' : 'COUNTRY'}</span><select value={areaCountry} onChange={event => { setAreaCountry(event.target.value); setAreaState(''); setAreaCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code}</option>)}</select></label>
+          <label className="area-picker-field"><span>{lang === 'cs' ? 'ZEMĚ' : lang === 'de' ? 'LAND' : lang === 'nl' ? 'LAND' : 'COUNTRY'}</span><select value={areaCountry} onChange={event => { setAreaCountry(event.target.value); setAreaState(''); setAreaCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code === 'SK' ? u.slovakia : code}</option>)}</select></label>
           <div className="area-picker-row">
             <label className="area-picker-field"><span>{areaCountry === 'DE' ? u.bundesland : u.region}</span><select value={areaState} onChange={event => { setAreaState(event.target.value); setAreaCounty('') }}><option value="">{areaCountry === 'DE' ? u.allStates : u.allRegions}</option>{areaStates.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
             <label className="area-picker-field"><span>{areaCountry === 'DE' ? u.county : u.district}</span><select value={areaCounty} onChange={event => setAreaCounty(event.target.value)}><option value="">{u.allCounties}</option>{areaCounties.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
