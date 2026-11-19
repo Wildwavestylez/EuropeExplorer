@@ -31,6 +31,7 @@ async function getSlovakiaExplorerIndex() {
         }
         for (const point of index.map_points) {
           if (!point || !postcodes.has(point.postcode) || !point.fact_id
+            || !point.title || !point.category || !point.map_category
             || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)
             || point.lat < -90 || point.lat > 90 || point.lon < -180 || point.lon > 180) {
             throw new Error('Slovak Explorer index contains an invalid fact-map point.')
