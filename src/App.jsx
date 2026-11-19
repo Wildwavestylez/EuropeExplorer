@@ -15,14 +15,14 @@ async function getSlovakiaExplorerIndex() {
       .then(async response => {
         if (!response.ok) throw new Error(`Slovak Explorer index returned HTTP ${response.status}`)
         const index = await response.json()
-        if (index.country_code !== 'SK' || index.data_version !== 5
+        if (index.country_code !== 'SK' || index.data_version !== 5 || index.status !== 'published'
           || !Array.isArray(index.records) || !Array.isArray(index.map_points)
           || index.count !== index.records.length) {
           throw new Error('Slovak Explorer index has an invalid structure or version.')
         }
         const postcodes = new Set()
         for (const record of index.records) {
-          if (!record || !/^\\d{5}$/.test(record.postcode || '')
+          if (!record || !/^[0-9]{5}$/.test(record.postcode || '')
             || record.status !== 'published' || record.data_version !== 5
             || postcodes.has(record.postcode)) {
             throw new Error('Slovak Explorer index contains a non-V5, unpublished or duplicate record.')
@@ -262,10 +262,15 @@ export default function App() {
           if (page.length < pageSize) break
           czFrom += pageSize
         }
-        const skIndex = await getSlovakiaExplorerIndex()
-        records = records.concat(skIndex.records.map(record => ({
-          country_code: 'SK', region: record.state || '', county: record.county || '',
-        })))
+        try {
+          const skIndex = await getSlovakiaExplorerIndex()
+          records = records.concat(skIndex.records.map(record => ({
+            country_code: 'SK', region: record.state || '', county: record.county || '',
+          })))
+        } catch (error) {
+          // GitHub availability must not block the existing DE/CZ area picker.
+          console.warn('Could not load Slovak areas for the area picker:', error)
+        }
         if (!alive) return
         setAreaCatalog(records)
         const availableCountries = [...new Set(records.map(row => row.country_code).filter(Boolean))].sort()
