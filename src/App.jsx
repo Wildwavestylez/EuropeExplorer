@@ -740,9 +740,7 @@ export default function App() {
     })
   }, [places, query, selectedState, selectedCounty])
 
-  // Area navigation uses the exact fact pins already stored in explorer_map_points.
-  // The postal records above are used only to identify which published postal areas
-  // belong to the selected country/state/county.
+  // Area navigation uses the country-specific published map coordinates.
   useEffect(() => {
     let alive = true
     async function loadAreaMapPoints() {
@@ -751,7 +749,6 @@ export default function App() {
         return
       }
       if (country === 'SK') {
-        const visiblePostcodes = new Set(filtered.map(place => place.postal_code))
         setAreaMapPoints(filtered.map(place => [Number(place.latitude), Number(place.longitude)])
           .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
         return
