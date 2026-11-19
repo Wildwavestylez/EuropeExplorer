@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 
 const MAX_POINTS = 1000
 const CACHE_LIMIT = 24
+const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
 
 function makeMarker(point, zoom) {
   if (point.is_cluster) {
@@ -35,9 +36,21 @@ function makeMarker(point, zoom) {
   })
 }
 
-export default function ViewportFactLayer({ onSelectFact, country = 'DE', mapPoints = [] }) {
+function longitudeToTileX(longitude, zoom) {
+  return Math.max(0, Math.min(2 ** zoom - 1, Math.floor((longitude + 180) / 360 * 2 ** zoom)))
+}
+
+function latitudeToTileY(latitude, zoom) {
+  const bounded = Math.max(-85.05112878, Math.min(85.05112878, latitude))
+  const radians = bounded * Math.PI / 180
+  return Math.max(0, Math.min(2 ** zoom - 1,
+    Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * 2 ** zoom)))
+}
+
+export default function ViewportFactLayer({ onSelectFact, country = 'DE', tileKeys = [] }) {
   const map = useMap()
   const cacheRef = useRef(new Map())
+  const tileCacheRef = useRef(new Map())
   const requestRef = useRef(null)
   const timerRef = useRef(null)
   const layerRef = useRef(null)
@@ -57,9 +70,44 @@ export default function ViewportFactLayer({ onSelectFact, country = 'DE', mapPoi
 
     let points
     if (country === 'SK') {
-      // Slovakia is GitHub-only. Its compact V5/published manifest supplies
-      // fact-level coordinates; filter locally to the current map viewport.
-      points = mapPoints.filter(point =>
+      // Match DE/CZ viewport loading: request only occupied map tiles intersecting
+      // the visible map bounds. Canonical fact content stays in per-postcode JSON.
+      const tileZoom = Math.min(8, Math.max(4, Math.floor(zoom) - 2))
+      const minX = longitudeToTileX(west, tileZoom)
+      const maxX = longitudeToTileX(east, tileZoom)
+      const minY = latitudeToTileY(north, tileZoom)
+      const maxY = latitudeToTileY(south, tileZoom)
+      const available = new Set(tileKeys)
+      const requestedKeys = []
+      for (let x = minX; x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) {
+          const tileKey = `${tileZoom}/${x}/${y}`
+          if (available.has(tileKey)) requestedKeys.push(tileKey)
+        }
+      }
+
+      const controller = new AbortController()
+      requestRef.current?.abort()
+      requestRef.current = controller
+      const loaded = await Promise.all(requestedKeys.map(async tileKey => {
+        if (tileCacheRef.current.has(tileKey)) return tileCacheRef.current.get(tileKey)
+        const response = await fetch(SLOVAKIA_TILES_URL + tileKey + '.json', {
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+          cache: 'default',
+        })
+        if (!response.ok) throw new Error(`Slovak map tile ${tileKey} returned HTTP ${response.status}`)
+        const tilePoints = await response.json()
+        if (!Array.isArray(tilePoints)) throw new Error(`Slovak map tile ${tileKey} has an invalid structure.`)
+        tileCacheRef.current.set(tileKey, tilePoints)
+        if (tileCacheRef.current.size > 48) tileCacheRef.current.delete(tileCacheRef.current.keys().next().value)
+        return tilePoints
+      }).catch(error => {
+        if (!controller.signal.aborted) console.error('Could not load Slovak viewport tiles:', error)
+        return []
+      }))
+      if (controller.signal.aborted) return
+      points = loaded.flat().filter(point =>
         Number.isFinite(point.lat) && Number.isFinite(point.lon)
         && point.lat >= south && point.lat <= north
         && point.lon >= west && point.lon <= east
@@ -116,7 +164,7 @@ export default function ViewportFactLayer({ onSelectFact, country = 'DE', mapPoi
       }
       layer.addLayer(marker)
     })
-  }, [map, country, mapPoints])
+  }, [map, country, tileKeys])
 
   useEffect(() => {
     const layer = L.markerClusterGroup({
@@ -139,6 +187,7 @@ export default function ViewportFactLayer({ onSelectFact, country = 'DE', mapPoi
     layerRef.current = layer
     map.addLayer(layer)
     cacheRef.current.clear()
+    tileCacheRef.current.clear()
 
     const scheduleLoad = () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
@@ -162,7 +211,6 @@ export default function ViewportFactLayer({ onSelectFact, country = 'DE', mapPoi
       layerRef.current = null
     }
   }, [map, loadViewport])
-
 
   return null
 }
