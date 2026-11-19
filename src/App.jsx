@@ -11,7 +11,7 @@ const slovakiaRecordCache = new Map()
 
 async function getSlovakiaExplorerIndex() {
   if (!slovakiaExplorerIndexPromise) {
-    slovakiaExplorerIndexPromise = fetch(SLOVAKIA_INDEX_URL, { headers: { Accept: 'application/json' } })
+    slovakiaExplorerIndexPromise = fetch(SLOVAKIA_INDEX_URL, { headers: { Accept: 'application/json' }, cache: 'no-store' })
       .then(async response => {
         if (!response.ok) throw new Error(`Slovak Explorer index returned HTTP ${response.status}`)
         const index = await response.json()
@@ -48,6 +48,7 @@ async function getSlovakiaRecord(postcode) {
   if (slovakiaRecordCache.has(postcode)) return slovakiaRecordCache.get(postcode)
   const response = await fetch(SLOVAKIA_RECORDS_URL + encodeURIComponent(postcode) + '.json', {
     headers: { Accept: 'application/json' },
+    cache: 'no-store',
   })
   if (!response.ok) throw new Error(`Slovak record ${postcode} returned HTTP ${response.status}`)
   const record = await response.json()
