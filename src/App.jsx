@@ -88,13 +88,13 @@ const copy = {
 
 
 const uiCopy = {
-  en: { tagline:'DISCOVER THE UNEXPECTED', openMenu:'Open menu', closeMenu:'Close menu', filters:'FILTERS', places:'PLACES', germany:'GERMANY', czechia:'CZECHIA', map:'EXPLORATION MAP', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'DISTRICT', allStates:'All federal states', allRegions:'All regions', allCounties:'All districts', reset:'RESET FILTERS', live:'LIVE DATA · SUPABASE', pins:'FACT PINS', areas:'AREAS', factLocation:'FACT LOCATION', clusterHint:'CLUSTERS MERGE ON ZOOM-OUT', pinDiscovery:'PIN DISCOVERY', localDiscovery:'LOCAL DISCOVERY', postalArea:'POSTAL AREA', discover:'Discover this place', noHighlights:'No published highlights are available for this area yet.', next:'YOUR NEXT DISCOVERY', closeDetails:'Close details', footer:'BUILT FOR THE CURIOUS · DATA FROM PUBLISHED POSTAL AREAS', error:'Could not load places from the database.' },
-  de: { tagline:'ENTDECKE DAS UNERWARTETE', openMenu:'Menü öffnen', closeMenu:'Menü schließen', filters:'FILTER', places:'ORTE', germany:'DEUTSCHLAND', czechia:'TSCHECHIEN', map:'ENTDECKUNGSKARTE', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'LANDKREIS', allStates:'Alle Bundesländer', allRegions:'Alle Regionen', allCounties:'Alle Landkreise', reset:'FILTER ZURÜCKSETZEN', live:'LIVE-DATEN · SUPABASE', pins:'FAKTEN-MARKER', areas:'GEBIETE', factLocation:'ORT DER SEHENSWÜRDIGKEIT', clusterHint:'CLUSTER BEIM HERAUSZOOMEN ZUSAMMENGEFASST', pinDiscovery:'ENTDECKUNG PER MARKER', localDiscovery:'ENTDECKUNG VOR ORT', postalArea:'POSTLEITZAHLGEBIET', discover:'Diesen Ort entdecken', noHighlights:'Für dieses Gebiet sind noch keine veröffentlichten Highlights verfügbar.', next:'DEINE NÄCHSTE ENTDECKUNG', closeDetails:'Details schließen', footer:'FÜR ENTDECKER · DATEN AUS VERÖFFENTLICHTEN POSTLEITZAHLGEBIETEN', error:'Orte konnten nicht aus der Datenbank geladen werden.' },
-  cs: { tagline:'OBJEVUJ NEČEKANÉ', openMenu:'Otevřít menu', closeMenu:'Zavřít menu', filters:'FILTRY', places:'MÍSTA', germany:'NĚMECKO', czechia:'ČESKO', map:'MAPA OBJEVŮ', bundesland:'SPOLKOVÁ ZEMĚ', region:'KRAJ', county:'OKRES', district:'OKRES', allStates:'Všechny spolkové země', allRegions:'Všechny kraje', allCounties:'Všechny okresy', reset:'VYMAZAT FILTRY', live:'ŽIVÁ DATA · SUPABASE', pins:'ZAJÍMAVOSTI NA MAPĚ', areas:'OBLASTI', factLocation:'MÍSTO ZAJÍMAVOSTI', clusterHint:'PŘI ODDÁLENÍ SE BODY SESKUPUJÍ', pinDiscovery:'OBJEV Z MAPY', localDiscovery:'MÍSTNÍ OBJEV', postalArea:'OBLAST PSČ', discover:'Objev toto místo', noHighlights:'Pro tuto oblast zatím nejsou dostupné žádné publikované zajímavosti.', next:'TVŮJ DALŠÍ OBJEV', closeDetails:'Zavřít detail', footer:'PRO ZVĚDAVÉ · DATA Z PUBLIKOVANÝCH POŠTOVNÍCH OBLASTÍ', error:'Místa se nepodařilo načíst z databáze.' },
-  es: { tagline:'DESCUBRE LO INESPERADO', openMenu:'Abrir menú', closeMenu:'Cerrar menú', filters:'FILTROS', places:'LUGARES', germany:'ALEMANIA', czechia:'CHEQUIA', map:'MAPA DE EXPLORACIÓN', bundesland:'ESTADO FEDERADO', region:'REGIÓN', county:'DISTRITO', district:'DISTRITO', allStates:'Todos los estados federados', allRegions:'Todas las regiones', allCounties:'Todos los distritos', reset:'BORRAR FILTROS', live:'DATOS EN DIRECTO · SUPABASE', pins:'PUNTOS DE INTERÉS', areas:'ZONAS', factLocation:'UBICACIÓN DEL PUNTO', clusterHint:'LOS GRUPOS SE UNEN AL ALEJAR EL ZOOM', pinDiscovery:'DESCUBRIMIENTO EN EL MAPA', localDiscovery:'DESCUBRIMIENTO LOCAL', postalArea:'ZONA POSTAL', discover:'Descubre este lugar', noHighlights:'Todavía no hay lugares destacados publicados para esta zona.', next:'TU PRÓXIMO DESCUBRIMIENTO', closeDetails:'Cerrar detalles', footer:'PARA PERSONAS CURIOSAS · DATOS DE ZONAS POSTALES PUBLICADAS', error:'No se pudieron cargar los lugares de la base de datos.' },
-  fr: { tagline:'DÉCOUVREZ L’INATTENDU', openMenu:'Ouvrir le menu', closeMenu:'Fermer le menu', filters:'FILTRES', places:'LIEUX', germany:'ALLEMAGNE', czechia:'TCHÉQUIE', map:'CARTE EXPLORATOIRE', bundesland:'LAND', region:'RÉGION', county:'ARRONDISSEMENT', district:'DISTRICT', allStates:'Tous les Länder', allRegions:'Toutes les régions', allCounties:'Tous les districts', reset:'RÉINITIALISER LES FILTRES', live:'DONNÉES EN DIRECT · SUPABASE', pins:'POINTS D’INTÉRÊT', areas:'ZONES', factLocation:'EMPLACEMENT DU POINT', clusterHint:'LES GROUPES SE REGROUPENT AU DÉZOOMAGE', pinDiscovery:'DÉCOUVERTE SUR LA CARTE', localDiscovery:'DÉCOUVERTE LOCALE', postalArea:'ZONE POSTALE', discover:'Découvrez ce lieu', noHighlights:'Aucun lieu remarquable publié n’est encore disponible pour cette zone.', next:'VOTRE PROCHAINE DÉCOUVERTE', closeDetails:'Fermer les détails', footer:'POUR LES CURIEUX · DONNÉES DES ZONES POSTALES PUBLIÉES', error:'Impossible de charger les lieux depuis la base de données.' },
-  it: { tagline:'SCOPRI L’INATTESO', openMenu:'Apri il menu', closeMenu:'Chiudi il menu', filters:'FILTRI', places:'LUOGHI', germany:'GERMANIA', czechia:'CECHIA', map:'MAPPA DI ESPLORAZIONE', bundesland:'STATO FEDERATO', region:'REGIONE', county:'DISTRETTO', district:'DISTRETTO', allStates:'Tutti gli stati federati', allRegions:'Tutte le regioni', allCounties:'Tutti i distretti', reset:'REIMPOSTA FILTRI', live:'DATI IN DIRETTA · SUPABASE', pins:'PUNTI DI INTERESSE', areas:'AREE', factLocation:'LUOGO DEL PUNTO', clusterHint:'I GRUPPI SI UNISCONO RIDUCENDO LO ZOOM', pinDiscovery:'SCOPERTA SULLA MAPPA', localDiscovery:'SCOPERTA LOCALE', postalArea:'AREA POSTALE', discover:'Scopri questo luogo', noHighlights:'Non sono ancora disponibili punti di interesse pubblicati per quest’area.', next:'LA TUA PROSSIMA SCOPERTA', closeDetails:'Chiudi dettagli', footer:'PER I CURIOSI · DATI DELLE AREE POSTALI PUBBLICATE', error:'Impossibile caricare i luoghi dal database.' },
-  nl: { tagline:'ONTDEK HET ONVERWACHTE', openMenu:'Menu openen', closeMenu:'Menu sluiten', filters:'FILTERS', places:'PLAATSEN', germany:'DUITSLAND', czechia:'TSJECHIË', map:'ONTDEKKINGSKAART', bundesland:'BONDSLAND', region:'REGIO', county:'LANDKREIS / DISTRICT', district:'DISTRICT', allStates:'Alle deelstaten', allRegions:'Alle regio’s', allCounties:'Alle districten', reset:'FILTERS WISSEN', live:'LIVEGEGEVENS · SUPABASE', pins:'FEITMARKERINGEN', areas:'GEBIEDEN', factLocation:'LOCATIE VAN DE BEZIENSWAARDIGHEID', clusterHint:'MARKERINGEN WORDEN GEGROEPEERD BIJ UITZOOMEN', pinDiscovery:'ONTDEKKING VIA MARKERING', localDiscovery:'ONTDEKKING IN DE BUURT', postalArea:'POSTCODEGEBIED', discover:'Ontdek deze plek', noHighlights:'Er zijn nog geen gepubliceerde hoogtepunten voor dit gebied.', next:'JOUW VOLGENDE ONTDEKKING', closeDetails:'Details sluiten', footer:'GEMAAKT VOOR NIEUWSGIERIGEN · GEGEVENS UIT GEPUBLICEERDE POSTCODEGEBIEDEN', error:'Plaatsen konden niet uit de database worden geladen.' },
+  en: { tagline:'DISCOVER THE UNEXPECTED', openMenu:'Open menu', closeMenu:'Close menu', filters:'FILTERS', places:'PLACES', germany:'GERMANY', czechia:'CZECHIA', slovakia:'SLOVAKIA', map:'EXPLORATION MAP', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'DISTRICT', allStates:'All federal states', allRegions:'All regions', allCounties:'All districts', reset:'RESET FILTERS', live:'LIVE DATA · SUPABASE', liveGithub:'LIVE DATA · GITHUB', pins:'FACT PINS', areas:'AREAS', factLocation:'FACT LOCATION', clusterHint:'CLUSTERS MERGE ON ZOOM-OUT', pinDiscovery:'PIN DISCOVERY', localDiscovery:'LOCAL DISCOVERY', postalArea:'POSTAL AREA', discover:'Discover this place', noHighlights:'No published highlights are available for this area yet.', next:'YOUR NEXT DISCOVERY', closeDetails:'Close details', footer:'BUILT FOR THE CURIOUS · DATA FROM PUBLISHED POSTAL AREAS', error:'Could not load places from the database.' },
+  de: { tagline:'ENTDECKE DAS UNERWARTETE', openMenu:'Menü öffnen', closeMenu:'Menü schließen', filters:'FILTER', places:'ORTE', germany:'DEUTSCHLAND', czechia:'TSCHECHIEN', slovakia:'SLOWAKEI', map:'ENTDECKUNGSKARTE', bundesland:'BUNDESLAND', region:'REGION', county:'LANDKREIS / KREIS', district:'LANDKREIS', allStates:'Alle Bundesländer', allRegions:'Alle Regionen', allCounties:'Alle Landkreise', reset:'FILTER ZURÜCKSETZEN', live:'LIVE-DATEN · SUPABASE', liveGithub:'LIVE-DATEN · GITHUB', pins:'FAKTEN-MARKER', areas:'GEBIETE', factLocation:'ORT DER SEHENSWÜRDIGKEIT', clusterHint:'CLUSTER BEIM HERAUSZOOMEN ZUSAMMENGEFASST', pinDiscovery:'ENTDECKUNG PER MARKER', localDiscovery:'ENTDECKUNG VOR ORT', postalArea:'POSTLEITZAHLGEBIET', discover:'Diesen Ort entdecken', noHighlights:'Für dieses Gebiet sind noch keine veröffentlichten Highlights verfügbar.', next:'DEINE NÄCHSTE ENTDECKUNG', closeDetails:'Details schließen', footer:'FÜR ENTDECKER · DATEN AUS VERÖFFENTLICHTEN POSTLEITZAHLGEBIETEN', error:'Orte konnten nicht aus der Datenbank geladen werden.' },
+  cs: { tagline:'OBJEVUJ NEČEKANÉ', openMenu:'Otevřít menu', closeMenu:'Zavřít menu', filters:'FILTRY', places:'MÍSTA', germany:'NĚMECKO', czechia:'ČESKO', slovakia:'SLOVENSKO', map:'MAPA OBJEVŮ', bundesland:'SPOLKOVÁ ZEMĚ', region:'KRAJ', county:'OKRES', district:'OKRES', allStates:'Všechny spolkové země', allRegions:'Všechny kraje', allCounties:'Všechny okresy', reset:'VYMAZAT FILTRY', live:'ŽIVÁ DATA · SUPABASE', liveGithub:'ŽIVÁ DATA · GITHUB', pins:'ZAJÍMAVOSTI NA MAPĚ', areas:'OBLASTI', factLocation:'MÍSTO ZAJÍMAVOSTI', clusterHint:'PŘI ODDÁLENÍ SE BODY SESKUPUJÍ', pinDiscovery:'OBJEV Z MAPY', localDiscovery:'MÍSTNÍ OBJEV', postalArea:'OBLAST PSČ', discover:'Objev toto místo', noHighlights:'Pro tuto oblast zatím nejsou dostupné žádné publikované zajímavosti.', next:'TVŮJ DALŠÍ OBJEV', closeDetails:'Zavřít detail', footer:'PRO ZVĚDAVÉ · DATA Z PUBLIKOVANÝCH POŠTOVNÍCH OBLASTÍ', error:'Místa se nepodařilo načíst z databáze.' },
+  es: { tagline:'DESCUBRE LO INESPERADO', openMenu:'Abrir menú', closeMenu:'Cerrar menú', filters:'FILTROS', places:'LUGARES', germany:'ALEMANIA', czechia:'CHEQUIA', slovakia:'ESLOVAQUIA', map:'MAPA DE EXPLORACIÓN', bundesland:'ESTADO FEDERADO', region:'REGIÓN', county:'DISTRITO', district:'DISTRITO', allStates:'Todos los estados federados', allRegions:'Todas las regiones', allCounties:'Todos los distritos', reset:'BORRAR FILTROS', live:'DATOS EN DIRECTO · SUPABASE', liveGithub:'DATOS EN DIRECTO · GITHUB', pins:'PUNTOS DE INTERÉS', areas:'ZONAS', factLocation:'UBICACIÓN DEL PUNTO', clusterHint:'LOS GRUPOS SE UNEN AL ALEJAR EL ZOOM', pinDiscovery:'DESCUBRIMIENTO EN EL MAPA', localDiscovery:'DESCUBRIMIENTO LOCAL', postalArea:'ZONA POSTAL', discover:'Descubre este lugar', noHighlights:'Todavía no hay lugares destacados publicados para esta zona.', next:'TU PRÓXIMO DESCUBRIMIENTO', closeDetails:'Cerrar detalles', footer:'PARA PERSONAS CURIOSAS · DATOS DE ZONAS POSTALES PUBLICADAS', error:'No se pudieron cargar los lugares de la base de datos.' },
+  fr: { tagline:'DÉCOUVREZ L’INATTENDU', openMenu:'Ouvrir le menu', closeMenu:'Fermer le menu', filters:'FILTRES', places:'LIEUX', germany:'ALLEMAGNE', czechia:'TCHÉQUIE', slovakia:'SLOVAQUIE', map:'CARTE EXPLORATOIRE', bundesland:'LAND', region:'RÉGION', county:'ARRONDISSEMENT', district:'DISTRICT', allStates:'Tous les Länder', allRegions:'Toutes les régions', allCounties:'Tous les districts', reset:'RÉINITIALISER LES FILTRES', live:'DONNÉES EN DIRECT · SUPABASE', liveGithub:'DONNÉES EN DIRECT · GITHUB', pins:'POINTS D’INTÉRÊT', areas:'ZONES', factLocation:'EMPLACEMENT DU POINT', clusterHint:'LES GROUPES SE REGROUPENT AU DÉZOOMAGE', pinDiscovery:'DÉCOUVERTE SUR LA CARTE', localDiscovery:'DÉCOUVERTE LOCALE', postalArea:'ZONE POSTALE', discover:'Découvrez ce lieu', noHighlights:'Aucun lieu remarquable publié n’est encore disponible pour cette zone.', next:'VOTRE PROCHAINE DÉCOUVERTE', closeDetails:'Fermer les détails', footer:'POUR LES CURIEUX · DONNÉES DES ZONES POSTALES PUBLIÉES', error:'Impossible de charger les lieux depuis la base de données.' },
+  it: { tagline:'SCOPRI L’INATTESO', openMenu:'Apri il menu', closeMenu:'Chiudi il menu', filters:'FILTRI', places:'LUOGHI', germany:'GERMANIA', czechia:'CECHIA', slovakia:'SLOVACCHIA', map:'MAPPA DI ESPLORAZIONE', bundesland:'STATO FEDERATO', region:'REGIONE', county:'DISTRETTO', district:'DISTRETTO', allStates:'Tutti gli stati federati', allRegions:'Tutte le regioni', allCounties:'Tutti i distretti', reset:'REIMPOSTA FILTRI', live:'DATI IN DIRETTA · SUPABASE', liveGithub:'DATI IN DIRETTA · GITHUB', pins:'PUNTI DI INTERESSE', areas:'AREE', factLocation:'LUOGO DEL PUNTO', clusterHint:'I GRUPPI SI UNISCONO RIDUCENDO LO ZOOM', pinDiscovery:'SCOPERTA SULLA MAPPA', localDiscovery:'SCOPERTA LOCALE', postalArea:'AREA POSTALE', discover:'Scopri questo luogo', noHighlights:'Non sono ancora disponibili punti di interesse pubblicati per quest’area.', next:'LA TUA PROSSIMA SCOPERTA', closeDetails:'Chiudi dettagli', footer:'PER I CURIOSI · DATI DELLE AREE POSTALI PUBBLICATE', error:'Impossibile caricare i luoghi dal database.' },
+  nl: { tagline:'ONTDEK HET ONVERWACHTE', openMenu:'Menu openen', closeMenu:'Menu sluiten', filters:'FILTERS', places:'PLAATSEN', germany:'DUITSLAND', czechia:'TSJECHIË', slovakia:'SLOWAKIJE', map:'ONTDEKKINGSKAART', bundesland:'BONDSLAND', region:'REGIO', county:'LANDKREIS / DISTRICT', district:'DISTRICT', allStates:'Alle deelstaten', allRegions:'Alle regio’s', allCounties:'Alle districten', reset:'FILTERS WISSEN', live:'LIVEGEGEVENS · SUPABASE', liveGithub:'LIVEGEGEVENS · GITHUB', pins:'FEITMARKERINGEN', areas:'GEBIEDEN', factLocation:'LOCATIE VAN DE BEZIENSWAARDIGHEID', clusterHint:'MARKERINGEN WORDEN GEGROEPEERD BIJ UITZOOMEN', pinDiscovery:'ONTDEKKING VIA MARKERING', localDiscovery:'ONTDEKKING IN DE BUURT', postalArea:'POSTCODEGEBIED', discover:'Ontdek deze plek', noHighlights:'Er zijn nog geen gepubliceerde hoogtepunten voor dit gebied.', next:'JOUW VOLGENDE ONTDEKKING', closeDetails:'Details sluiten', footer:'GEMAAKT VOOR NIEUWSGIERIGEN · GEGEVENS UIT GEPUBLICEERDE POSTCODEGEBIEDEN', error:'Plaatsen konden niet uit de database worden geladen.' },
 }
 
 
@@ -604,44 +604,72 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
-      // The map index contains one row per published fact with valid GPS coordinates.
-      // Sampling this table makes every eligible fact equally likely, regardless of
-      // how many facts happen to belong to its postal-code record.
-      const { count, error: countError } = await supabase
-        .from('explorer_map_points')
-        .select('postal_id', { count: 'exact', head: true })
+      const [{ count: supabaseCount, error: countError }, skIndex] = await Promise.all([
+        supabase.from('explorer_map_points').select('postal_id', { count: 'exact', head: true }),
+        getSlovakiaExplorerIndex().catch(error => {
+          console.warn('Slovak random-discovery index is unavailable:', error)
+          return { map_points: [] }
+        }),
+      ])
       if (countError) throw countError
-      if (!count) throw new Error('No published facts with coordinates')
+      const skPoints = skIndex.map_points || []
+      const total = (supabaseCount || 0) + skPoints.length
+      if (!total) throw new Error('No published facts with coordinates')
 
-      const offset = Math.floor(Math.random() * count)
-      const { data: mapFacts, error: pickError } = await supabase
-        .from('explorer_map_points')
-        .select('postal_id,country_code,postal_code,city,fact_id,lat,lon')
-        .range(offset, offset)
-      if (pickError) throw pickError
-      const mapFact = mapFacts?.[0]
-      if (!mapFact) throw new Error('Random fact could not be selected')
+      const offset = Math.floor(Math.random() * total)
+      let selectedPlace
+      let fact
+      let lat
+      let lon
 
-      const { data: place, error: placeError } = await supabase
-        .from('postal_codes')
-        .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
-        .eq('id', mapFact.postal_id)
-        .eq('status', 'published')
-        .single()
-      if (placeError) throw placeError
-
-      const fact = (place.content?.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
-      if (!fact) throw new Error('Selected fact is no longer available in its published record')
-
-      const selectedPlace = {
-        ...place,
-        latitude: mapFact.lat,
-        longitude: mapFact.lon,
+      if (offset >= (supabaseCount || 0)) {
+        const mapFact = skPoints[offset - (supabaseCount || 0)]
+        const content = await getSlovakiaRecord(mapFact.postcode)
+        fact = (content.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
+        if (!fact) throw new Error('Selected Slovak fact is not present in its published V5 record')
+        const record = skIndex.records.find(item => item.postcode === mapFact.postcode)
+        if (!record) throw new Error('Selected Slovak postal area is missing from the Explorer index')
+        lat = mapFact.lat
+        lon = mapFact.lon
+        selectedPlace = {
+          id: 'SK:' + record.postcode,
+          country_code: 'SK',
+          postal_code: record.postcode,
+          city: record.city,
+          municipality: record.city,
+          district: record.district || '',
+          region: record.state || '',
+          county: record.county || '',
+          latitude: record.representative_point?.lat ?? lat,
+          longitude: record.representative_point?.lon ?? lon,
+          content,
+        }
+      } else {
+        const { data: mapFacts, error: pickError } = await supabase
+          .from('explorer_map_points')
+          .select('postal_id,country_code,postal_code,city,fact_id,lat,lon')
+          .range(offset, offset)
+        if (pickError) throw pickError
+        const mapFact = mapFacts?.[0]
+        if (!mapFact) throw new Error('Random fact could not be selected')
+        const { data: place, error: placeError } = await supabase
+          .from('postal_codes')
+          .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
+          .eq('id', mapFact.postal_id)
+          .eq('status', 'published')
+          .single()
+        if (placeError) throw placeError
+        fact = (place.content?.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
+        if (!fact) throw new Error('Selected fact is no longer available in its published record')
+        lat = mapFact.lat
+        lon = mapFact.lon
+        selectedPlace = { ...place, latitude: lat, longitude: lon }
       }
-      setCountry(place.country_code || 'DE')
-      setMapStart([mapFact.lat, mapFact.lon])
+
+      setCountry(selectedPlace.country_code || 'DE')
+      setMapStart([lat, lon])
       setSelected(selectedPlace)
-      setRandomFocusPoint([mapFact.lat, mapFact.lon])
+      setRandomFocusPoint([lat, lon])
       setSelectedFact(fact)
       setActiveMode('real')
       setFactSheetExpanded(false)
