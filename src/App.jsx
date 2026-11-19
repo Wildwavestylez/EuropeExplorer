@@ -6,8 +6,24 @@ import ViewportFactLayer from './components/ViewportFactLayer'
 
 const SLOVAKIA_INDEX_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_index.json'
 const SLOVAKIA_RECORDS_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/records/'
+const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
 let slovakiaExplorerIndexPromise = null
 const slovakiaRecordCache = new Map()
+const slovakiaTileCache = new Map()
+
+async function getSlovakiaTile(key) {
+  if (slovakiaTileCache.has(key)) return slovakiaTileCache.get(key)
+  const response = await fetch(SLOVAKIA_TILES_URL + key + '.json', {
+    headers: { Accept: 'application/json' },
+    cache: 'default',
+  })
+  if (!response.ok) throw new Error(`Slovak map tile ${key} returned HTTP ${response.status}`)
+  const points = await response.json()
+  if (!Array.isArray(points)) throw new Error(`Slovak map tile ${key} has an invalid structure.`)
+  slovakiaTileCache.set(key, points)
+  if (slovakiaTileCache.size > 48) slovakiaTileCache.delete(slovakiaTileCache.keys().next().value)
+  return points
+}
 
 async function getSlovakiaExplorerIndex() {
   if (!slovakiaExplorerIndexPromise) {
@@ -16,8 +32,9 @@ async function getSlovakiaExplorerIndex() {
         if (!response.ok) throw new Error(`Slovak Explorer index returned HTTP ${response.status}`)
         const index = await response.json()
         if (index.country_code !== 'SK' || index.data_version !== 5 || index.status !== 'published'
-          || !Array.isArray(index.records) || !Array.isArray(index.map_points)
-          || index.count !== index.records.length) {
+          || !Array.isArray(index.records) || !Array.isArray(index.tile_keys)
+          || !Array.isArray(index.random_tiles) || index.count !== index.records.length
+          || !Number.isInteger(index.map_point_count) || index.map_point_count < 0) {
           throw new Error('Slovak Explorer index has an invalid structure or version.')
         }
         const postcodes = new Set()
@@ -29,13 +46,22 @@ async function getSlovakiaExplorerIndex() {
           }
           postcodes.add(record.postcode)
         }
-        for (const point of index.map_points) {
-          if (!point || !postcodes.has(point.postcode) || !point.fact_id
-            || !point.title || !point.category || !point.map_category
-            || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)
-            || point.lat < -90 || point.lat > 90 || point.lon < -180 || point.lon > 180) {
-            throw new Error('Slovak Explorer index contains an invalid fact-map point.')
+        const tileKeys = new Set(index.tile_keys)
+        for (const key of index.tile_keys) {
+          if (!/^([4-8])\\/(\\d+)\\/(\\d+)$/.test(key)) {
+            throw new Error('Slovak Explorer index contains an invalid map tile key.')
           }
+        }
+        let randomPointCount = 0
+        for (const tile of index.random_tiles) {
+          if (!tile || !tileKeys.has(tile.key) || !Number.isInteger(tile.count) || tile.count < 1
+            || !tile.key.startsWith('8/')) {
+            throw new Error('Slovak Explorer index contains invalid random-tile metadata.')
+          }
+          randomPointCount += tile.count
+        }
+        if (randomPointCount !== index.map_point_count) {
+          throw new Error('Slovak Explorer index map-point count does not match its random tiles.')
         }
         return index
       })
@@ -181,7 +207,7 @@ function getCounty(place) {
 
 export default function App() {
   const [places, setPlaces] = useState([])
-  const [slovakiaMapPoints, setSlovakiaMapPoints] = useState([])
+  const [slovakiaTileKeys, setSlovakiaTileKeys] = useState([])
   const [activeMode, setActiveMode] = useState('')
   const [introSearch, setIntroSearch] = useState('')
   const [introMessage, setIntroMessage] = useState('')
@@ -397,7 +423,7 @@ export default function App() {
         let from = 0
         let all = []
         let pageCount = 0
-        if (country !== 'SK') setSlovakiaMapPoints([])
+        if (country !== 'SK') setSlovakiaTileKeys([])
         if (country === 'SK') {
           const index = await getSlovakiaExplorerIndex()
           all = index.records.map(record => ({
@@ -417,7 +443,7 @@ export default function App() {
           pageCount = 1
           if (!alive) return
           setPlaces(all)
-          setSlovakiaMapPoints(index.map_points)
+          setSlovakiaTileKeys(index.tile_keys)
           setLoadDiagnostics(null)
           return
         }
@@ -615,12 +641,13 @@ export default function App() {
         supabase.from('explorer_map_points').select('postal_id', { count: 'exact', head: true }),
         getSlovakiaExplorerIndex().catch(error => {
           console.warn('Slovak random-discovery index is unavailable:', error)
-          return { map_points: [] }
+          return { map_point_count: 0, random_tiles: [] }
         }),
       ])
       if (countError) throw countError
-      const skPoints = skIndex.map_points || []
-      const total = (supabaseCount || 0) + skPoints.length
+      const skTiles = skIndex.random_tiles || []
+      const skCount = skIndex.map_point_count || 0
+      const total = (supabaseCount || 0) + skCount
       if (!total) throw new Error('No published facts with coordinates')
 
       const offset = Math.floor(Math.random() * total)
@@ -630,7 +657,16 @@ export default function App() {
       let lon
 
       if (offset >= (supabaseCount || 0)) {
-        const mapFact = skPoints[offset - (supabaseCount || 0)]
+        let tileOffset = offset - (supabaseCount || 0)
+        let selectedTile = null
+        for (const tile of skTiles) {
+          if (tileOffset < tile.count) { selectedTile = tile; break }
+          tileOffset -= tile.count
+        }
+        if (!selectedTile) throw new Error('No Slovak random map tile could be selected.')
+        const tilePoints = await getSlovakiaTile(selectedTile.key)
+        const mapFact = tilePoints[tileOffset]
+        if (!mapFact) throw new Error('Selected Slovak random map tile is missing the expected fact.')
         const content = await getSlovakiaRecord(mapFact.postcode)
         fact = (content.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
         if (!fact) throw new Error('Selected Slovak fact is not present in its published V5 record')
@@ -716,8 +752,7 @@ export default function App() {
       }
       if (country === 'SK') {
         const visiblePostcodes = new Set(filtered.map(place => place.postal_code))
-        setAreaMapPoints(slovakiaMapPoints.filter(point => visiblePostcodes.has(point.postcode))
-          .map(point => [Number(point.lat), Number(point.lon)])
+        setAreaMapPoints(filtered.map(place => [Number(place.latitude), Number(place.longitude)])
           .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
         return
       }
@@ -755,7 +790,7 @@ export default function App() {
     }
     loadAreaMapPoints()
     return () => { alive = false }
-  }, [activeMode, filtered, country, slovakiaMapPoints])
+  }, [activeMode, filtered, country])
 
   const localizedFacts = selected ? getLocalizedFacts(selected.content, lang) : []
   const facts = selectedFact
@@ -827,7 +862,7 @@ export default function App() {
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
-            <ViewportFactLayer country={country} mapPoints={slovakiaMapPoints} onSelectFact={handleFactSelect} />
+            <ViewportFactLayer country={country} tileKeys={slovakiaTileKeys} onSelectFact={handleFactSelect} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
