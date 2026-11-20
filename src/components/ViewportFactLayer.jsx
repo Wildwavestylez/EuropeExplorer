@@ -6,6 +6,17 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import { supabase } from '../lib/supabase'
 
+
+const ITALY_DATABASE_URL = 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
+let italySqlPromise = null
+
+async function getItalySql() {
+  if (!italySqlPromise) italySqlPromise = import('https://esm.sh/@neondatabase/serverless@1.2.1?bundle')
+    .then(({ neon }) => neon(ITALY_DATABASE_URL, { disableWarningInBrowsers: true }))
+    .catch(error => { italySqlPromise = null; throw error })
+  return italySqlPromise
+}
+
 const MAX_POINTS = 1000
 const CACHE_LIMIT = 24
 
@@ -24,7 +35,7 @@ async function getItalyViewportPoints(bounds) {
     FROM public.italy_cap_records r
     CROSS JOIN LATERAL jsonb_array_elements(
       CASE WHEN jsonb_typeof(r.record->'facts') = 'array' THEN r.record->'facts' ELSE '[]'::jsonb END
-    ) AS fact
+    ) AS items(fact)
     WHERE r.workflow_status = 'published'
       AND r.record->>'status' = 'published'
       AND r.record->>'data_version' = '5'
@@ -91,6 +102,9 @@ export default function ViewportFactLayer({ onSelectFact, country = 'DE', tileKe
 
     let points
     if (country === 'IT') {
+      const controller = new AbortController()
+      requestRef.current?.abort()
+      requestRef.current = controller
       try {
         points = cacheRef.current.get(key)
         if (!points) {
