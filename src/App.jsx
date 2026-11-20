@@ -4,6 +4,68 @@ import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, Sliders
 import { supabase } from './lib/supabase'
 import ViewportFactLayer from './components/ViewportFactLayer'
 
+
+const ITALY_DATABASE_URL = 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
+let italySqlPromise = null
+const italyRecordCache = new Map()
+
+async function getItalySql() {
+  if (!italySqlPromise) italySqlPromise = import('https://esm.sh/@neondatabase/serverless@1.2.1?bundle')
+    .then(({ neon }) => neon(ITALY_DATABASE_URL, { disableWarningInBrowsers: true }))
+    .catch(error => { italySqlPromise = null; throw error })
+  return italySqlPromise
+}
+
+function isPublishedItalyV5(record, workflowStatus) {
+  return workflowStatus === 'published' && record?.status === 'published' && Number(record?.data_version) === 5
+}
+
+async function getItalyRecord(postcode) {
+  if (italyRecordCache.has(postcode)) return italyRecordCache.get(postcode)
+  const sql = await getItalySql()
+  const rows = await sql`
+    SELECT postcode, workflow_status, record
+    FROM public.italy_cap_records
+    WHERE postcode = ${postcode}
+      AND workflow_status = 'published'
+      AND record->>'status' = 'published'
+      AND record->>'data_version' = '5'
+    LIMIT 1
+  `
+  const row = rows[0]
+  if (!row || !isPublishedItalyV5(row.record, row.workflow_status) || row.record.postcode !== postcode) {
+    throw new Error(`Italian CAP ${postcode} is not a published V5 record.`)
+  }
+  italyRecordCache.set(postcode, row.record)
+  return row.record
+}
+
+async function getItalyPublishedPlaces() {
+  const sql = await getItalySql()
+  const rows = await sql`
+    SELECT postcode, record
+    FROM public.italy_cap_records
+    WHERE workflow_status = 'published'
+      AND record->>'status' = 'published'
+      AND record->>'data_version' = '5'
+    ORDER BY postcode
+  `
+  return rows.filter(row => isPublishedItalyV5(row.record, 'published')).map(({ postcode, record }) => ({
+    id: 'IT:' + postcode,
+    country_code: 'IT',
+    postal_code: postcode,
+    city: record.city || '',
+    municipality: record.city || '',
+    district: record.district || '',
+    region: record.state || '',
+    county: record.county || '',
+    latitude: record.representative_point?.lat ?? null,
+    longitude: record.representative_point?.lon ?? null,
+    status: record.status,
+    data_version: Number(record.data_version),
+  }))
+}
+
 const SLOVAKIA_INDEX_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_index.json'
 const SLOVAKIA_RECORDS_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/records/'
 const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
@@ -293,6 +355,14 @@ export default function App() {
           czFrom += pageSize
         }
         try {
+          const italyPlaces = await getItalyPublishedPlaces()
+          records = records.concat(italyPlaces.map(record => ({
+            country_code: 'IT', region: record.region || '', county: record.county || '',
+          })))
+        } catch (error) {
+          console.warn('Could not load published Italian areas for the area picker:', error)
+        }
+        try {
           const skIndex = await getSlovakiaExplorerIndex()
           records = records.concat(skIndex.records.map(record => ({
             country_code: 'SK', region: record.state || '', county: record.county || '',
@@ -357,6 +427,15 @@ export default function App() {
   }
 
   const handlePlaceSelect = useCallback(async (place) => {
+    if (place.country_code === 'IT') {
+      try {
+        const content = await getItalyRecord(place.postal_code)
+        setSelected({ ...place, content })
+        setRandomFocusPoint(null)
+        setSelectedFact(null)
+      } catch (error) { console.error('Could not load Italian CAP details:', error) }
+      return
+    }
     if (place.country_code === 'SK') {
       try {
         const content = await getSlovakiaRecord(place.postal_code)
@@ -381,6 +460,19 @@ export default function App() {
   }, [])
 
   const handleFactSelect = useCallback(async (place, fact) => {
+    if (place.country_code === 'IT') {
+      try {
+        const content = await getItalyRecord(place.postal_code)
+        const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
+        if (!canonicalFact) throw new Error('Selected fact is not present in the published Italian CAP record.')
+        setSelected({ ...place, content })
+        setRandomFocusPoint(null)
+        setSelectedFact(canonicalFact)
+        setFactSheetExpanded(false)
+        setFactSheetOpen(true)
+      } catch (error) { console.error('Could not load Italian fact details:', error) }
+      return
+    }
     if (place.country_code === 'SK') {
       try {
         const content = await getSlovakiaRecord(place.postal_code)
@@ -426,6 +518,14 @@ export default function App() {
         let all = []
         let pageCount = 0
         if (country !== 'SK') setSlovakiaTileKeys([])
+        if (country === 'IT') {
+          all = await getItalyPublishedPlaces()
+          pageCount = 1
+          if (!alive) return
+          setPlaces(all)
+          setLoadDiagnostics(null)
+          return
+        }
         if (country === 'SK') {
           const index = await getSlovakiaExplorerIndex()
           all = index.records.map(record => ({
@@ -750,7 +850,7 @@ export default function App() {
         setAreaMapPoints([])
         return
       }
-      if (country === 'SK') {
+      if (country === 'SK' || country === 'IT') {
         setAreaMapPoints(filtered.map(place => [Number(place.latitude), Number(place.longitude)])
           .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
         return
@@ -853,11 +953,11 @@ export default function App() {
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
-          <div className="panel-foot"><span className="status-dot" /> {country === 'SK' ? u.liveGithub : u.live}</div>
+          <div className="panel-foot"><span className="status-dot" /> {country === 'SK' ? u.liveGithub : country === 'IT' ? 'LIVE DATA · NEON' : u.live}</div>
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : country === 'SK' ? u.slovakia : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
+          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : country === 'SK' ? u.slovakia : country === 'IT' ? 'ITALY' : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
