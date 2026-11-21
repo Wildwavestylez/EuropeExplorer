@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 // Neon is the target source for every country's published V5 records.
 // Until the remaining country migrations are complete, DE and SK stay on
 // their existing sources but are merged into this same map cluster.
-const NEON_DATABASE_URL = import.meta.env.VITE_NEON_DATABASE_URL
+const NEON_DATABASE_URL = import.meta.env.VITE_NEON_DATABASE_URL || 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
 let neonSqlPromise = null
 
 async function getNeonSql() {
