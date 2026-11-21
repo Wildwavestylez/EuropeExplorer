@@ -456,6 +456,7 @@ export default function App() {
         }
         try {
           const skIndex = await getSlovakiaExplorerIndex()
+          setSlovakiaTileKeys(skIndex.tile_keys || [])
           records = records.concat(skIndex.records.map(record => ({
             country_code: 'SK', region: record.state || '', county: record.county || '',
           })))
