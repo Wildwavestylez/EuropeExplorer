@@ -88,14 +88,85 @@ async function getCzechDiagnostics() {
       COUNT(items.fact) FILTER (WHERE items.fact IS NOT NULL)::int AS facts_total,
       COUNT(items.fact) FILTER (
         WHERE jsonb_typeof(items.fact->'location') = 'object'
-          AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?
+          AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (items.fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
+          AND (items.fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
+      )::int AS located_facts
+    FROM public.czechia_cap_records r
+    LEFT JOIN LATERAL jsonb_array_elements(
+      CASE WHEN jsonb_typeof(r.record->'facts') = 'array' THEN r.record->'facts' ELSE '[]'::jsonb END
+    ) AS items(fact) ON true
+    WHERE r.workflow_status = 'published' AND r.content_version = 5
+    GROUP BY r.postcode, r.record
+    ORDER BY r.postcode
+  `
+  const rejected = []
+  let accepted = 0
+  let factsTotal = 0
+  let locatedFacts = 0
+  for (const row of rows) {
+    const total = Number(row.facts_total || 0)
+    const located = Number(row.located_facts || 0)
+    factsTotal += total
+    locatedFacts += located
+    const reasons = []
+    const repLat = Number(row.representative_lat)
+    const repLon = Number(row.representative_lon)
+    if (!Number.isFinite(repLat) || !Number.isFinite(repLon)
+      || repLat < -90 || repLat > 90 || repLon < -180 || repLon > 180) {
+      reasons.push('Chybí platný representative_point – PSČ nelze správně umístit do seznamu a výběru oblasti.')
+    }
+    if (total === 0) reasons.push('Záznam neobsahuje žádné facts.')
+    else if (located === 0) reasons.push(`Žádný z ${total} faktů nemá platné GPS souřadnice location.lat/lon.`)
+    else if (located < total) reasons.push(`Pouze ${located} z ${total} faktů má platné GPS souřadnice; ${total - located} se na mapu nevykreslí.`)
+    if (reasons.length) rejected.push({
+      postal_code: String(row.postcode),
+      city: row.city || '',
+      reasons,
+      facts_total: total,
+      located_facts: located,
+    })
+    else accepted += 1
+  }
+  return {
+    country: 'CZ',
+    fetched: rows.length,
+    accepted,
+    rejected,
+    pageCount: rows.length ? 1 : 0,
+    pageSize: rows.length,
+    factsTotal,
+    locatedFacts,
+    diagnosticsError: '',
+  }
+}
+
+async function getCzechPublishedPlaces() {
   if (!czechPublishedPlacesPromise) czechPublishedPlacesPromise = (async () => {
     const sql = await getItalySql()
     const rows = await sql`SELECT postcode, record FROM public.czechia_cap_records WHERE workflow_status = 'published' AND content_version = 5 ORDER BY postcode`
-    return rows.map(({postcode,record}) => ({id:'CZ:'+postcode,country_code:'CZ',postal_code:String(postcode),city:record.city||'',municipality:record.city||'',district:record.district||'',region:record.state||'',county:record.county||'',latitude:record.representative_point?.lat??null,longitude:record.representative_point?.lon??null,status:'published',data_version:5}))
-  })().catch(error => { czechPublishedPlacesPromise=null; throw error })
+    return rows.map(({ postcode, record }) => ({
+      id: 'CZ:' + postcode,
+      country_code: 'CZ',
+      postal_code: String(postcode),
+      city: record.city || '',
+      municipality: record.city || '',
+      district: record.district || '',
+      region: record.state || '',
+      county: record.county || '',
+      latitude: record.representative_point?.lat ?? null,
+      longitude: record.representative_point?.lon ?? null,
+      status: 'published',
+      data_version: 5,
+    }))
+  })().catch(error => {
+    czechPublishedPlacesPromise = null
+    throw error
+  })
   return czechPublishedPlacesPromise
 }
+
 async function getCzechFactCount() {
   const sql = await getItalySql()
   const rows = await sql`SELECT COUNT(*)::int AS count FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(fact->'location')='object' AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'`
@@ -2069,66 +2140,6 @@ export default function App() {
     </section>}
     <footer><span>EUROPE EXPLORER</span><span>{u.footer}</span><span>© 2026</span></footer>
   </main>
-}
-          AND (items.fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
-          AND (items.fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
-      )::int AS located_facts
-    FROM public.czechia_cap_records r
-    LEFT JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(r.record->'facts') = 'array' THEN r.record->'facts' ELSE '[]'::jsonb END
-    ) AS items(fact) ON true
-    WHERE r.workflow_status = 'published' AND r.content_version = 5
-    GROUP BY r.postcode, r.record
-    ORDER BY r.postcode
-  `
-  const rejected = []
-  let accepted = 0
-  let factsTotal = 0
-  let locatedFacts = 0
-  for (const row of rows) {
-    const total = Number(row.facts_total || 0)
-    const located = Number(row.located_facts || 0)
-    factsTotal += total
-    locatedFacts += located
-    const reasons = []
-    const repLat = Number(row.representative_lat)
-    const repLon = Number(row.representative_lon)
-    if (!Number.isFinite(repLat) || !Number.isFinite(repLon)
-      || repLat < -90 || repLat > 90 || repLon < -180 || repLon > 180) {
-      reasons.push('Chybí platný representative_point – PSČ nelze správně umístit do seznamu a výběru oblasti.')
-    }
-    if (total === 0) reasons.push('Záznam neobsahuje žádné facts.')
-    else if (located === 0) reasons.push(`Žádný z ${total} faktů nemá platné GPS souřadnice location.lat/lon.`)
-    else if (located < total) reasons.push(`Pouze ${located} z ${total} faktů má platné GPS souřadnice; ${total - located} se na mapu nevykreslí.`)
-    if (reasons.length) rejected.push({
-      postal_code: String(row.postcode),
-      city: row.city || '',
-      reasons,
-      facts_total: total,
-      located_facts: located,
-    })
-    else accepted += 1
-  }
-  return {
-    country: 'CZ',
-    fetched: rows.length,
-    accepted,
-    rejected,
-    pageCount: rows.length ? 1 : 0,
-    pageSize: rows.length,
-    factsTotal,
-    locatedFacts,
-    diagnosticsError: '',
-  }
-}
-
-async function getCzechPublishedPlaces() {
-  if (!czechPublishedPlacesPromise) czechPublishedPlacesPromise = (async () => {
-    const sql = await getItalySql()
-    const rows = await sql`SELECT postcode, record FROM public.czechia_cap_records WHERE workflow_status = 'published' AND content_version = 5 ORDER BY postcode`
-    return rows.map(({postcode,record}) => ({id:'CZ:'+postcode,country_code:'CZ',postal_code:String(postcode),city:record.city||'',municipality:record.city||'',district:record.district||'',region:record.state||'',county:record.county||'',latitude:record.representative_point?.lat??null,longitude:record.representative_point?.lon??null,status:'published',data_version:5}))
-  })().catch(error => { czechPublishedPlacesPromise=null; throw error })
-  return czechPublishedPlacesPromise
 }
 async function getCzechFactCount() {
   const sql = await getItalySql()
