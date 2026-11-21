@@ -95,7 +95,7 @@ function latitudeToTileY(latitude, zoom) {
   return Math.max(0,Math.min(2**zoom-1,Math.floor((1-Math.asinh(Math.tan(radians))/Math.PI)/2*2**zoom)))
 }
 
-export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
+export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKeys=[] }) {
   const map=useMap()
   const cacheRef=useRef(new Map())
   const tileCacheRef=useRef(new Map())
@@ -103,7 +103,9 @@ export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
   const timerRef=useRef(null)
   const layerRef=useRef(null)
   const callbackRef=useRef(onSelectFact)
+  const timingCallbackRef=useRef(onSourceTiming)
   callbackRef.current=onSelectFact
+  timingCallbackRef.current=onSourceTiming
 
   const loadViewport=useCallback(async () => {
     const bounds=map.getBounds()
@@ -121,15 +123,26 @@ export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
       const startedAt=performance.now()
       try {
         const result=await task()
-        if(!controller.signal.aborted) console.info('[Europe Explorer] source timing', {
+        if(!controller.signal.aborted) timingCallbackRef.current?.({
           source:name,
           milliseconds:Math.round((performance.now()-startedAt)*10)/10,
           points:Array.isArray(result)?result.length:0,
           viewport:key,
+          status:'ok',
         })
         return result
       } catch(error) {
-        if(!controller.signal.aborted) console.error(`Europe Explorer ${name} source failed after ${Math.round(performance.now()-startedAt)} ms:`,error)
+        if(!controller.signal.aborted) {
+          timingCallbackRef.current?.({
+            source:name,
+            milliseconds:Math.round((performance.now()-startedAt)*10)/10,
+            points:0,
+            viewport:key,
+            status:'error',
+            error:String(error?.message||error),
+          })
+          console.error(`Europe Explorer ${name} source failed after ${Math.round(performance.now()-startedAt)} ms:`,error)
+        }
         return []
       }
     }
