@@ -868,19 +868,17 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
-      const [{ count: supabaseCount, error: countError }, skIndex, czCount] = await Promise.all([
-        supabase.from('explorer_map_points').select('postal_id', { count: 'exact', head: true }).eq('country_code','DE'),
+      // Germany is temporarily excluded from map discovery until its Neon migration.
+      const [skIndex, czCount] = await Promise.all([
         getSlovakiaExplorerIndex().catch(error => {
           console.warn('Slovak random-discovery index is unavailable:', error)
           return { map_point_count: 0, random_tiles: [] }
         }),
         getCzechFactCount(),
       ])
-      if (countError) throw countError
       const skTiles = skIndex.random_tiles || []
       const skCount = skIndex.map_point_count || 0
-      const deCount = supabaseCount || 0
-      const total = deCount + skCount + czCount
+      const total = skCount + czCount
       if (!total) throw new Error('No published facts with coordinates')
 
       const offset = Math.floor(Math.random() * total)
@@ -889,15 +887,15 @@ export default function App() {
       let lat
       let lon
 
-      if (offset >= deCount + skCount) {
-        const czRow=await getCzechRandomFact(offset-deCount-skCount)
+      if (offset >= skCount) {
+        const czRow=await getCzechRandomFact(offset-skCount)
         if(!czRow) throw new Error('No Czech random fact could be selected.')
         const content=czRow.record; fact=czRow.fact
         lat=Number(fact.location.lat); lon=Number(fact.location.lon)
         const postcode=String(czRow.postcode)
         selectedPlace={id:'CZ:'+postcode,country_code:'CZ',postal_code:postcode,city:content.city||'',municipality:content.city||'',district:content.district||'',region:content.state||'',county:content.county||'',latitude:content.representative_point?.lat??lat,longitude:content.representative_point?.lon??lon,content}
-      } else if (offset >= deCount) {
-        let tileOffset = offset - deCount
+      } else {
+        let tileOffset = offset
         let selectedTile = null
         for (const tile of skTiles) {
           if (tileOffset < tile.count) { selectedTile = tile; break }
@@ -927,26 +925,6 @@ export default function App() {
           longitude: record.representative_point?.lon ?? lon,
           content,
         }
-      } else {
-        const { data: mapFacts, error: pickError } = await supabase
-          .from('explorer_map_points')
-          .select('postal_id,country_code,postal_code,city,fact_id,lat,lon')
-          .range(offset, offset)
-        if (pickError) throw pickError
-        const mapFact = mapFacts?.[0]
-        if (!mapFact) throw new Error('Random fact could not be selected')
-        const { data: place, error: placeError } = await supabase
-          .from('postal_codes')
-          .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
-          .eq('id', mapFact.postal_id)
-          .eq('status', 'published')
-          .single()
-        if (placeError) throw placeError
-        fact = (place.content?.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
-        if (!fact) throw new Error('Selected fact is no longer available in its published record')
-        lat = mapFact.lat
-        lon = mapFact.lon
-        selectedPlace = { ...place, latitude: lat, longitude: lon }
       }
 
       setCountry(selectedPlace.country_code || 'DE')
@@ -991,6 +969,11 @@ export default function App() {
       if (country === 'SK' || country === 'IT' || country === 'CZ') {
         setAreaMapPoints(filtered.map(place => [Number(place.latitude), Number(place.longitude)])
           .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
+        return
+      }
+      // Germany's legacy Supabase map points are intentionally disabled.
+      if (country === 'DE') {
+        setAreaMapPoints([])
         return
       }
       const ids = filtered.map(place => place.id).filter(id => id != null)
