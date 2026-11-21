@@ -389,6 +389,7 @@ export default function App() {
   const [introMessage, setIntroMessage] = useState('')
   const [mapStart, setMapStart] = useState([51.1657, 10.4515])
   const [loadDiagnostics, setLoadDiagnostics] = useState(null)
+  const [mapSourceTimings, setMapSourceTimings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
@@ -1098,7 +1099,7 @@ export default function App() {
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
-            <ViewportFactLayer country={country} tileKeys={slovakiaTileKeys} onSelectFact={handleFactSelect} />
+            <ViewportFactLayer country={country} tileKeys={slovakiaTileKeys} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
@@ -1153,6 +1154,20 @@ export default function App() {
             <strong>{record.postal_code || 'Unknown postal code'}</strong>{record.city ? ` · ${record.city}` : ''}
             <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>{record.reasons.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul>{country === 'CZ' ? <p style={{ margin: '4px 0 0', color: '#57534e' }}>Fakta s GPS: {record.located_facts} / {record.facts_total}</p> : null}
           </li>)}</ol>}
+        </div>
+      </details>
+    </section>}
+    {activeMode && <section style={{ margin: '8px auto 16px', padding: '0 12px', maxWidth: '1200px', color: '#78716c', fontSize: '11px' }}>
+      <details>
+        <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika načítání mapy</summary>
+        <div style={{ marginTop: '12px', padding: '16px', border: '1px solid #d6d3d1', borderRadius: '10px', background: '#fff', color: '#292524', fontSize: '13px' }}>
+          <p style={{ margin: '0 0 10px' }}>Časy jednotlivých zdrojů pro poslední načítání mapy. Při pohybu mapy se hodnoty aktualizují.</p>
+          {mapSourceTimings.length === 0 ? <p>Zatím čekám na první výsledky načítání…</p> : <div style={{ display: 'grid', gap: '8px' }}>
+            {mapSourceTimings.map((item, index) => <div key={item.source + item.viewport} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '8px 10px', background: '#f5f5f4', borderRadius: '6px' }}>
+              <span><strong>{item.source}</strong><br/><small>{item.status === 'error' ? 'Chyba: ' + item.error : item.points + ' bodů'}</small></span>
+              <strong style={{ color: item.status === 'error' ? '#b91c1c' : '#166534', fontVariantNumeric: 'tabular-nums' }}>{item.milliseconds} ms</strong>
+            </div>)}
+          </div>}
         </div>
       </details>
     </section>}
