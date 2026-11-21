@@ -888,7 +888,7 @@ export default function App() {
         setAreaMapPoints([])
         return
       }
-      if (country === 'SK' || country === 'IT') {
+      if (country === 'SK' || country === 'IT' || country === 'CZ') {
         setAreaMapPoints(filtered.map(place => [Number(place.latitude), Number(place.longitude)])
           .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
         return
@@ -991,7 +991,7 @@ export default function App() {
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
-          <div className="panel-foot"><span className="status-dot" /> {country === 'SK' ? u.liveGithub : country === 'IT' ? 'LIVE DATA · NEON' : u.live}</div>
+          <div className="panel-foot"><span className="status-dot" /> {country === 'SK' ? u.liveGithub : (country === 'IT' || country === 'CZ') ? 'LIVE DATA · NEON' : u.live}</div>
         </aside>
 
         <div className="map-panel">
