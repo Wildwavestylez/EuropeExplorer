@@ -72,7 +72,7 @@ async function getCzechRecord(postcode) {
   const key = String(postcode)
   if (czechRecordCache.has(key)) return czechRecordCache.get(key)
   const sql = await getItalySql()
-  const rows = await sql`SELECT record FROM public.czechia_cap_records WHERE postcode = ${key} AND workflow_status = 'published' AND content_version = 5 LIMIT 1`
+  const rows = await sql`SELECT COALESCE(record->'content',record) AS record FROM public.czechia_cap_records WHERE postcode = ${key} AND workflow_status = 'published' AND content_version = 5 LIMIT 1`
   if (!rows[0]) throw new Error(`Czech postcode ${key} is not published V5.`)
   czechRecordCache.set(key, rows[0].record)
   return rows[0].record
@@ -82,9 +82,9 @@ async function getCzechDiagnostics() {
   const rows = await sql`
     SELECT
       r.postcode,
-      r.record->>'city' AS city,
-      r.record->'representative_point'->>'lat' AS representative_lat,
-      r.record->'representative_point'->>'lon' AS representative_lon,
+      (COALESCE(r.record->'content',r.record))->>'city' AS city,
+      (COALESCE(r.record->'content',r.record))->'representative_point'->>'lat' AS representative_lat,
+      (COALESCE(r.record->'content',r.record))->'representative_point'->>'lon' AS representative_lon,
       COUNT(items.fact) FILTER (WHERE items.fact IS NOT NULL)::int AS facts_total,
       COUNT(items.fact) FILTER (
         WHERE jsonb_typeof(items.fact->'location') = 'object'
@@ -95,10 +95,10 @@ async function getCzechDiagnostics() {
       )::int AS located_facts
     FROM public.czechia_cap_records r
     LEFT JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(r.record->'facts') = 'array' THEN r.record->'facts' ELSE '[]'::jsonb END
+      CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts') = 'array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
     ) AS items(fact) ON true
     WHERE r.workflow_status = 'published' AND r.content_version = 5
-    GROUP BY r.postcode, r.record
+    GROUP BY r.postcode, COALESCE(r.record->'content',r.record)
     ORDER BY r.postcode
   `
   const rejected = []
@@ -145,7 +145,7 @@ async function getCzechDiagnostics() {
 async function getCzechPublishedPlaces() {
   if (!czechPublishedPlacesPromise) czechPublishedPlacesPromise = (async () => {
     const sql = await getItalySql()
-    const rows = await sql`SELECT postcode, record FROM public.czechia_cap_records WHERE workflow_status = 'published' AND content_version = 5 ORDER BY postcode`
+    const rows = await sql`SELECT postcode, COALESCE(record->'content',record) AS record FROM public.czechia_cap_records WHERE workflow_status = 'published' AND content_version = 5 ORDER BY postcode`
     return rows.map(({ postcode, record }) => ({
       id: 'CZ:' + postcode,
       country_code: 'CZ',
@@ -169,12 +169,12 @@ async function getCzechPublishedPlaces() {
 
 async function getCzechFactCount() {
   const sql = await getItalySql()
-  const rows = await sql`SELECT COUNT(*)::int AS count FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(fact->'location')='object' AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'`
+  const rows = await sql`SELECT COUNT(*)::int AS count FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(fact->'location')='object' AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'`
   return Number(rows[0]?.count||0)
 }
 async function getCzechRandomFact(offset) {
   const sql = await getItalySql()
-  const rows = await sql`SELECT r.postcode,r.record,items.fact FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(items.fact->'location')='object' AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$' ORDER BY r.postcode,items.fact->>'id' OFFSET ${offset} LIMIT 1`
+  const rows = await sql`SELECT r.postcode,COALESCE(r.record->'content',r.record) AS record,items.fact FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(items.fact->'location')='object' AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$' ORDER BY r.postcode,items.fact->>'id' OFFSET ${offset} LIMIT 1`
   return rows[0]||null
 }
 
