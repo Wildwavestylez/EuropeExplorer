@@ -160,18 +160,25 @@ export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
         .map(p=>({...p,country_code:'SK',is_cluster:false}))
     })
 
-    const sources=await Promise.all([deTask,czTask,itTask,skTask])
+    // Render each country's pins as soon as its source finishes.
+    // This avoids blocking every marker behind the slowest country source.
+    renderPoints([],zoom)
+    const collected=[]
+    await Promise.all([deTask,czTask,itTask,skTask].map(async task=>{
+      const points=await task
+      if(controller.signal.aborted) return
+      collected.push(...points)
+      renderPoints(points,zoom,false)
+    }))
     if(controller.signal.aborted) return
-    const points=sources.flat()
-    cacheRef.current.set(key,points)
+    cacheRef.current.set(key,collected)
     if(cacheRef.current.size>CACHE_LIMIT) cacheRef.current.delete(cacheRef.current.keys().next().value)
-    renderPoints(points,zoom)
   },[map,tileKeys])
 
-  function renderPoints(points,zoom) {
+  function renderPoints(points,zoom,clear=true) {
     const layer=layerRef.current
     if(!layer) return
-    layer.clearLayers()
+    if(clear) layer.clearLayers()
     points.forEach(point=>{
       if(!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))) return
       const marker=makeMarker(point,zoom)
