@@ -118,9 +118,18 @@ export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
     requestRef.current?.abort()
     requestRef.current=controller
     const independent=async (name, task) => {
-      try { return await task() }
-      catch(error) {
-        if(!controller.signal.aborted) console.error(`Europe Explorer ${name} source failed:`,error)
+      const startedAt=performance.now()
+      try {
+        const result=await task()
+        if(!controller.signal.aborted) console.info('[Europe Explorer] source timing', {
+          source:name,
+          milliseconds:Math.round((performance.now()-startedAt)*10)/10,
+          points:Array.isArray(result)?result.length:0,
+          viewport:key,
+        })
+        return result
+      } catch(error) {
+        if(!controller.signal.aborted) console.error(`Europe Explorer ${name} source failed after ${Math.round(performance.now()-startedAt)} ms:`,error)
         return []
       }
     }
@@ -164,6 +173,7 @@ export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
     // This avoids blocking every marker behind the slowest country source.
     renderPoints([],zoom)
     const collected=[]
+    const allSourcesStartedAt=performance.now()
     await Promise.all([deTask,czTask,itTask,skTask].map(async task=>{
       const points=await task
       if(controller.signal.aborted) return
@@ -171,6 +181,11 @@ export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
       renderPoints(points,zoom,false)
     }))
     if(controller.signal.aborted) return
+    console.info('[Europe Explorer] all map sources settled', {
+      milliseconds:Math.round((performance.now()-allSourcesStartedAt)*10)/10,
+      points:collected.length,
+      viewport:key,
+    })
     cacheRef.current.set(key,collected)
     if(cacheRef.current.size>CACHE_LIMIT) cacheRef.current.delete(cacheRef.current.keys().next().value)
   },[map,tileKeys])
