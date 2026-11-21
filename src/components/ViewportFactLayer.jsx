@@ -6,65 +6,60 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import { supabase } from '../lib/supabase'
 
+// Neon is the target source for every country's published V5 records.
+// Until the remaining country migrations are complete, DE and SK stay on
+// their existing sources but are merged into this same map cluster.
+const NEON_DATABASE_URL = import.meta.env.VITE_NEON_DATABASE_URL
+let neonSqlPromise = null
 
-const ITALY_DATABASE_URL = 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
-let italySqlPromise = null
-
-async function getItalySql() {
-  if (!italySqlPromise) italySqlPromise = import('https://esm.sh/@neondatabase/serverless@1.2.1?bundle')
-    .then(({ neon }) => neon(ITALY_DATABASE_URL, { disableWarningInBrowsers: true }))
-    .catch(error => { italySqlPromise = null; throw error })
-  return italySqlPromise
+async function getNeonSql() {
+  if (!NEON_DATABASE_URL) throw new Error('VITE_NEON_DATABASE_URL is not configured')
+  if (!neonSqlPromise) neonSqlPromise = import('https://esm.sh/@neondatabase/serverless@1.2.1?bundle')
+    .then(({ neon }) => neon(NEON_DATABASE_URL, { disableWarningInBrowsers: true }))
+    .catch(error => { neonSqlPromise = null; throw error })
+  return neonSqlPromise
 }
 
 const MAX_POINTS = 1000
 const CACHE_LIMIT = 24
+const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
 
-async function getItalyViewportPoints(bounds) {
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT
-      r.postcode,
-      r.record->>'city' AS city,
-      fact->>'id' AS fact_id,
-      fact->>'title' AS title,
-      fact->>'category' AS category,
-      fact->>'map_category' AS map_category,
-      (fact->'location'->>'lat')::double precision AS lat,
-      (fact->'location'->>'lon')::double precision AS lon
-    FROM public.italy_cap_records r
-    CROSS JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(r.record->'facts') = 'array' THEN r.record->'facts' ELSE '[]'::jsonb END
-    ) AS items(fact)
-    WHERE r.workflow_status = 'published'
-      AND r.record->>'status' = 'published'
-      AND r.record->>'data_version' = '5'
-      AND jsonb_typeof(fact->'location') = 'object'
-      AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
-      AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
-    LIMIT 1000
-  `
-  return rows.map(row => ({
-    ...row, postcode: String(row.postcode), lat: Number(row.lat), lon: Number(row.lon),
-    country_code: 'IT', is_cluster: false,
-  })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
-}
-
-async function getCzechViewportPoints(bounds) {
-  const sql = await getItalySql()
+async function getNeonViewportPoints(table, bounds, country) {
+  const sql = await getNeonSql()
+  if (table === 'czechia_cap_records') {
+    const rows = await sql`
+      SELECT r.postcode, r.record->>'city' AS city,
+        fact->>'id' AS fact_id, fact->>'title' AS title,
+        fact->>'category' AS category, fact->>'map_category' AS map_category,
+        (fact->'location'->>'lat')::double precision AS lat,
+        (fact->'location'->>'lon')::double precision AS lon
+      FROM public.czechia_cap_records r
+      CROSS JOIN LATERAL jsonb_array_elements(
+        CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
+      ) AS items(fact)
+      WHERE r.workflow_status='published' AND r.content_version=5
+        AND jsonb_typeof(fact->'location')='object'
+        AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+        AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+        AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+        AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
+      LIMIT 1000
+    `
+    return rows.map(row => ({...row, postcode:String(row.postcode), lat:Number(row.lat), lon:Number(row.lon), country_code:country, is_cluster:false}))
+      .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
+  }
   const rows = await sql`
     SELECT r.postcode, r.record->>'city' AS city,
       fact->>'id' AS fact_id, fact->>'title' AS title,
       fact->>'category' AS category, fact->>'map_category' AS map_category,
       (fact->'location'->>'lat')::double precision AS lat,
       (fact->'location'->>'lon')::double precision AS lon
-    FROM public.czechia_cap_records r
+    FROM public.italy_cap_records r
     CROSS JOIN LATERAL jsonb_array_elements(
       CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
     ) AS items(fact)
-    WHERE r.workflow_status='published' AND r.content_version=5
+    WHERE r.workflow_status='published' AND r.record->>'status'='published'
+      AND r.record->>'data_version'='5'
       AND jsonb_typeof(fact->'location')='object'
       AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
       AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
@@ -72,225 +67,155 @@ async function getCzechViewportPoints(bounds) {
       AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
     LIMIT 1000
   `
-  return rows.map(row => ({...row,postcode:String(row.postcode),lat:Number(row.lat),lon:Number(row.lon),country_code:'CZ',is_cluster:false}))
-    .filter(point=>Number.isFinite(point.lat)&&Number.isFinite(point.lon))
+  return rows.map(row => ({...row, postcode:String(row.postcode), lat:Number(row.lat), lon:Number(row.lon), country_code:country, is_cluster:false}))
+    .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
 }
-
-const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
 
 function makeMarker(point, zoom) {
   if (point.is_cluster) {
     return L.marker([point.lat, point.lon], {
       featureCount: Number(point.point_count) || 0,
-      icon: L.divIcon({
-        className: 'fact-cluster-icon',
-        html: `<span class="fact-cluster-count">${point.point_count}</span>`,
-        iconSize: [42, 42],
-        iconAnchor: [21, 21],
-      }),
-      title: String(point.point_count),
+      icon: L.divIcon({ className:'fact-cluster-icon', html:`<span class="fact-cluster-count">${point.point_count}</span>`, iconSize:[42,42], iconAnchor:[21,21] }),
+      title:String(point.point_count),
     })
   }
-
   return L.marker([point.lat, point.lon], {
-    icon: L.divIcon({
-      className: zoom >= 13 ? 'fact-pin-icon fact-pin-detailed' : 'fact-pin-icon',
-      html: '<span class="fact-pin-dot"></span>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-    }),
-    title: zoom >= 13 ? (point.title || point.postal_code || '') : '',
-    riseOnHover: true,
+    icon:L.divIcon({ className:zoom>=13?'fact-pin-icon fact-pin-detailed':'fact-pin-icon', html:'<span class="fact-pin-dot"></span>', iconSize:[18,18], iconAnchor:[9,9] }),
+    title:zoom>=13?(point.title||point.postal_code||''):'',
+    riseOnHover:true,
   })
 }
 
 function longitudeToTileX(longitude, zoom) {
   return Math.max(0, Math.min(2 ** zoom - 1, Math.floor((longitude + 180) / 360 * 2 ** zoom)))
 }
-
 function latitudeToTileY(latitude, zoom) {
-  const bounded = Math.max(-85.05112878, Math.min(85.05112878, latitude))
-  const radians = bounded * Math.PI / 180
-  return Math.max(0, Math.min(2 ** zoom - 1,
-    Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * 2 ** zoom)))
+  const bounded=Math.max(-85.05112878,Math.min(85.05112878,latitude))
+  const radians=bounded*Math.PI/180
+  return Math.max(0,Math.min(2**zoom-1,Math.floor((1-Math.asinh(Math.tan(radians))/Math.PI)/2*2**zoom)))
 }
 
-export default function ViewportFactLayer({ onSelectFact, country = 'DE', tileKeys = [] }) {
-  const map = useMap()
-  const cacheRef = useRef(new Map())
-  const tileCacheRef = useRef(new Map())
-  const requestRef = useRef(null)
-  const timerRef = useRef(null)
-  const layerRef = useRef(null)
-  const callbackRef = useRef(onSelectFact)
-  callbackRef.current = onSelectFact
+export default function ViewportFactLayer({ onSelectFact, tileKeys=[] }) {
+  const map=useMap()
+  const cacheRef=useRef(new Map())
+  const tileCacheRef=useRef(new Map())
+  const requestRef=useRef(null)
+  const timerRef=useRef(null)
+  const layerRef=useRef(null)
+  const callbackRef=useRef(onSelectFact)
+  callbackRef.current=onSelectFact
 
-  const loadViewport = useCallback(async () => {
-    const bounds = map.getBounds()
-    const zoom = map.getZoom()
-    const south = Math.max(-90, bounds.getSouth())
-    const north = Math.min(90, bounds.getNorth())
-    const west = Math.max(-180, bounds.getWest())
-    const east = Math.min(180, bounds.getEast())
-    const key = [zoom, south, west, north, east].map(v =>
-      typeof v === 'number' ? v.toFixed(3) : v
-    ).join(':')
+  const loadViewport=useCallback(async () => {
+    const bounds=map.getBounds()
+    const zoom=map.getZoom()
+    const south=Math.max(-90,bounds.getSouth()), north=Math.min(90,bounds.getNorth())
+    const west=Math.max(-180,bounds.getWest()), east=Math.min(180,bounds.getEast())
+    const key=[zoom,south,west,north,east].map(v=>v.toFixed(3)).join(':')
+    const cached=cacheRef.current.get(key)
+    if (cached) { renderPoints(cached, zoom); return }
 
-    let points
-    if (country === 'SK') {
-      // Match DE/CZ viewport loading: request only occupied map tiles intersecting
-      // the visible map bounds. Canonical fact content stays in per-postcode JSON.
-      const tileZoom = Math.min(8, Math.max(4, Math.floor(zoom) - 2))
-      const minX = longitudeToTileX(west, tileZoom)
-      const maxX = longitudeToTileX(east, tileZoom)
-      const minY = latitudeToTileY(north, tileZoom)
-      const maxY = latitudeToTileY(south, tileZoom)
-      const available = new Set(tileKeys)
-      const requestedKeys = []
-      for (let x = minX; x <= maxX; x++) {
-        for (let y = minY; y <= maxY; y++) {
-          const tileKey = `${tileZoom}/${x}/${y}`
-          if (available.has(tileKey)) requestedKeys.push(tileKey)
-        }
-      }
-
-      const controller = new AbortController()
-      requestRef.current?.abort()
-      requestRef.current = controller
-      const loaded = await Promise.all(requestedKeys.map(async tileKey => {
-        if (tileCacheRef.current.has(tileKey)) return tileCacheRef.current.get(tileKey)
-        const response = await fetch(SLOVAKIA_TILES_URL + tileKey + '.json', {
-          signal: controller.signal,
-          headers: { Accept: 'application/json' },
-          cache: 'default',
-        })
-        if (!response.ok) throw new Error(`Slovak map tile ${tileKey} returned HTTP ${response.status}`)
-        const tilePoints = await response.json()
-        if (!Array.isArray(tilePoints)) throw new Error(`Slovak map tile ${tileKey} has an invalid structure.`)
-        tileCacheRef.current.set(tileKey, tilePoints)
-        if (tileCacheRef.current.size > 48) tileCacheRef.current.delete(tileCacheRef.current.keys().next().value)
-        return tilePoints
-      })).catch(error => {
-        if (!controller.signal.aborted) console.error('Could not load Slovak viewport tiles:', error)
+    const controller=new AbortController()
+    requestRef.current?.abort()
+    requestRef.current=controller
+    const independent=async (name, task) => {
+      try { return await task() }
+      catch(error) {
+        if(!controller.signal.aborted) console.error(`Europe Explorer ${name} source failed:`,error)
         return []
-      })
-      if (controller.signal.aborted) return
-      points = loaded.flat().filter(point =>
-        Number.isFinite(point.lat) && Number.isFinite(point.lon)
-        && point.lat >= south && point.lat <= north
-        && point.lon >= west && point.lon <= east
-      ).map(point => ({ ...point, is_cluster: false }))
-    } else if (country === 'CZ') {
-      points = cacheRef.current.get(key)
-      if (!points) {
-        requestRef.current?.abort()
-        const controller = new AbortController()
-        requestRef.current = controller
-        try { points = await getCzechViewportPoints({south,west,north,east}) }
-        catch(error) { if(!controller.signal.aborted) console.error('Could not load Czech Neon viewport points:',error); return }
-        if(controller.signal.aborted) return
-        cacheRef.current.set(key,points)
-        if(cacheRef.current.size>CACHE_LIMIT) cacheRef.current.delete(cacheRef.current.keys().next().value)
       }
-    } else {
-      points = cacheRef.current.get(key)
-      if (!points) {
-        requestRef.current?.abort()
-        const controller = new AbortController()
-        requestRef.current = controller
-        const { data, error } = await supabase.rpc('get_explorer_map_points_v2', {
-          p_south: south,
-          p_west: west,
-          p_north: north,
-          p_east: east,
-          p_zoom: zoom,
-          p_limit: MAX_POINTS,
-        }).abortSignal(controller.signal)
-
-        if (controller.signal.aborted) return
-        if (error) {
-          console.error('Explorer map viewport query failed:', error)
-          return
-        }
-        points = data || []
-        cacheRef.current.set(key, points)
-        if (cacheRef.current.size > CACHE_LIMIT) {
-          cacheRef.current.delete(cacheRef.current.keys().next().value)
-        }
-      }
-      if (requestRef.current?.signal.aborted) return
     }
-    const layer = layerRef.current
-    if (!layer) return
-    layer.clearLayers()
 
-    points.forEach(point => {
-      const marker = makeMarker(point, zoom)
-      if (!point.is_cluster) {
-        marker.on('click', () => {
-          callbackRef.current?.({
-            id: point.postal_id || point.id || (point.postcode ? country + ':' + point.postcode : null),
-            country_code: point.country_code || country,
-            postal_code: point.postcode || point.postal_code,
-            city: point.city,
-          }, {
-            id: point.fact_id,
-            title: point.title,
-            category: point.category,
-            map_category: point.map_category || point.category,
-            location: { lat: point.lat, lon: point.lon },
-          })
-        })
+    const deTask=independent('Germany / Supabase',async()=>{
+      const {data,error}=await supabase.rpc('get_explorer_map_points_v2',{
+        p_south:south,p_west:west,p_north:north,p_east:east,p_zoom:zoom,p_limit:MAX_POINTS,
+      }).abortSignal(controller.signal)
+      if(error) throw error
+      return (data||[]).map(point=>({...point,country_code:point.country_code||'DE',is_cluster:Boolean(point.is_cluster)}))
+    })
+
+    const czTask=independent('Czechia / Neon',()=>getNeonViewportPoints('czechia_cap_records',{south,west,north,east},'CZ'))
+    const itTask=independent('Italy / Neon',()=>getNeonViewportPoints('italy_cap_records',{south,west,north,east},'IT'))
+
+    const skTask=independent('Slovakia / published tiles',async()=>{
+      if(!tileKeys.length) return []
+      const tileZoom=Math.min(8,Math.max(4,Math.floor(zoom)-2))
+      const minX=longitudeToTileX(west,tileZoom), maxX=longitudeToTileX(east,tileZoom)
+      const minY=latitudeToTileY(north,tileZoom), maxY=latitudeToTileY(south,tileZoom)
+      const available=new Set(tileKeys), requested=[]
+      for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) {
+        const tileKey=`${tileZoom}/${x}/${y}`
+        if(available.has(tileKey)) requested.push(tileKey)
       }
+      const loaded=await Promise.all(requested.map(async tileKey=>{
+        if(tileCacheRef.current.has(tileKey)) return tileCacheRef.current.get(tileKey)
+        const response=await fetch(SLOVAKIA_TILES_URL+tileKey+'.json',{signal:controller.signal,headers:{Accept:'application/json'},cache:'default'})
+        if(!response.ok) throw new Error(`Slovak map tile ${tileKey} returned HTTP ${response.status}`)
+        const tilePoints=await response.json()
+        if(!Array.isArray(tilePoints)) throw new Error(`Slovak map tile ${tileKey} has an invalid structure`)
+        tileCacheRef.current.set(tileKey,tilePoints)
+        if(tileCacheRef.current.size>48) tileCacheRef.current.delete(tileCacheRef.current.keys().next().value)
+        return tilePoints
+      }))
+      return loaded.flat().filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat>=south&&p.lat<=north&&p.lon>=west&&p.lon<=east)
+        .map(p=>({...p,country_code:'SK',is_cluster:false}))
+    })
+
+    const sources=await Promise.all([deTask,czTask,itTask,skTask])
+    if(controller.signal.aborted) return
+    const points=sources.flat()
+    cacheRef.current.set(key,points)
+    if(cacheRef.current.size>CACHE_LIMIT) cacheRef.current.delete(cacheRef.current.keys().next().value)
+    renderPoints(points,zoom)
+  },[map,tileKeys])
+
+  function renderPoints(points,zoom) {
+    const layer=layerRef.current
+    if(!layer) return
+    layer.clearLayers()
+    points.forEach(point=>{
+      if(!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))) return
+      const marker=makeMarker(point,zoom)
+      if(!point.is_cluster) marker.on('click',()=>{
+        const code=point.country_code||'DE'
+        callbackRef.current?.({
+          id:point.postal_id||point.id||`${code}:${point.postcode||point.postal_code||''}`,
+          country_code:code,postal_code:point.postcode||point.postal_code,city:point.city,
+        },{
+          id:point.fact_id,title:point.title,category:point.category,
+          map_category:point.map_category||point.category,location:{lat:Number(point.lat),lon:Number(point.lon)},
+        })
+      })
       layer.addLayer(marker)
     })
-  }, [map, country, tileKeys])
+  }
 
-  useEffect(() => {
-    const layer = L.markerClusterGroup({
-      iconCreateFunction: cluster => {
-        const totalFacts = cluster.getAllChildMarkers().reduce((sum, marker) => sum + (Number(marker.options.featureCount) || 1), 0)
-        return L.divIcon({
-          className: 'fact-cluster-icon',
-          html: '<span class="fact-cluster-count">' + totalFacts + '</span>',
-          iconSize: [42, 42],
-          iconAnchor: [21, 21],
-        })
+  useEffect(()=>{
+    const layer=L.markerClusterGroup({
+      iconCreateFunction:cluster=>{
+        const total=cluster.getAllChildMarkers().reduce((sum,marker)=>sum+(Number(marker.options.featureCount)||1),0)
+        return L.divIcon({className:'fact-cluster-icon',html:'<span class="fact-cluster-count">'+total+'</span>',iconSize:[42,42],iconAnchor:[21,21]})
       },
-      chunkedLoading: true,
-      showCoverageOnHover: false,
-      spiderfyOnMaxZoom: true,
-      zoomToBoundsOnClick: true,
-      maxClusterRadius: 52,
-      disableClusteringAtZoom: 14,
+      chunkedLoading:true,showCoverageOnHover:false,spiderfyOnMaxZoom:true,
+      zoomToBoundsOnClick:true,maxClusterRadius:52,disableClusteringAtZoom:14,
     })
-    layerRef.current = layer
+    layerRef.current=layer
     map.addLayer(layer)
     cacheRef.current.clear()
     tileCacheRef.current.clear()
-
-    const scheduleLoad = () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current)
+    const scheduleLoad=()=>{
+      if(timerRef.current) window.clearTimeout(timerRef.current)
       requestRef.current?.abort()
-      timerRef.current = window.setTimeout(() => {
-        loadViewport()
-      }, 220)
+      timerRef.current=window.setTimeout(()=>loadViewport(),220)
     }
-
-    map.on('moveend', scheduleLoad)
-    map.on('zoomend', scheduleLoad)
+    map.on('moveend',scheduleLoad)
+    map.on('zoomend',scheduleLoad)
     scheduleLoad()
-
-    return () => {
-      map.off('moveend', scheduleLoad)
-      map.off('zoomend', scheduleLoad)
-      if (timerRef.current) window.clearTimeout(timerRef.current)
+    return ()=>{
+      map.off('moveend',scheduleLoad); map.off('zoomend',scheduleLoad)
+      if(timerRef.current) window.clearTimeout(timerRef.current)
       requestRef.current?.abort()
-      map.removeLayer(layer)
-      layer.clearLayers()
-      layerRef.current = null
+      map.removeLayer(layer); layer.clearLayers(); layerRef.current=null
     }
-  }, [map, loadViewport])
-
+  },[map,loadViewport])
   return null
 }
