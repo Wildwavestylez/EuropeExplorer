@@ -28,14 +28,14 @@ async function getNeonViewportPoints(table, bounds, country) {
   const sql = await getNeonSql()
   if (table === 'czechia_cap_records') {
     const rows = await sql`
-      SELECT r.postcode, r.record->>'city' AS city,
+      SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
         fact->>'id' AS fact_id, fact->>'title' AS title,
         fact->>'category' AS category, fact->>'map_category' AS map_category,
         (fact->'location'->>'lat')::double precision AS lat,
         (fact->'location'->>'lon')::double precision AS lon
       FROM public.czechia_cap_records r
       CROSS JOIN LATERAL jsonb_array_elements(
-        CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
+        CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
       ) AS items(fact)
       WHERE r.workflow_status='published' AND r.content_version=5
         AND jsonb_typeof(fact->'location')='object'
@@ -49,14 +49,14 @@ async function getNeonViewportPoints(table, bounds, country) {
       .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
   }
   const rows = await sql`
-    SELECT r.postcode, r.record->>'city' AS city,
+    SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
       fact->>'id' AS fact_id, fact->>'title' AS title,
       fact->>'category' AS category, fact->>'map_category' AS map_category,
       (fact->'location'->>'lat')::double precision AS lat,
       (fact->'location'->>'lon')::double precision AS lon
     FROM public.italy_cap_records r
     CROSS JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
+      CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
     ) AS items(fact)
     WHERE r.workflow_status='published' AND r.record->>'status'='published'
       AND r.record->>'data_version'='5'
