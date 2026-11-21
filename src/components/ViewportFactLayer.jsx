@@ -4,11 +4,8 @@ import L from 'leaflet'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
-import { supabase } from '../lib/supabase'
-
-// Neon is the target source for every country's published V5 records.
-// Until the remaining country migrations are complete, DE and SK stay on
-// their existing sources but are merged into this same map cluster.
+// The map currently displays only countries with independent published data sources.
+// Germany is intentionally paused until its migration to Neon is complete.
 const NEON_DATABASE_URL = import.meta.env.VITE_NEON_DATABASE_URL || 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
 let neonSqlPromise = null
 
@@ -147,14 +144,6 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
       }
     }
 
-    const deTask=independent('Germany / Supabase',async()=>{
-      const {data,error}=await supabase.rpc('get_explorer_map_points_v2',{
-        p_south:south,p_west:west,p_north:north,p_east:east,p_zoom:zoom,p_limit:MAX_POINTS,
-      }).abortSignal(controller.signal)
-      if(error) throw error
-      return (data||[]).map(point=>({...point,country_code:point.country_code||'DE',is_cluster:Boolean(point.is_cluster)}))
-    })
-
     const czTask=independent('Czechia / Neon',()=>getNeonViewportPoints('czechia_cap_records',{south,west,north,east},'CZ'))
     const itTask=independent('Italy / Neon',()=>getNeonViewportPoints('italy_cap_records',{south,west,north,east},'IT'))
 
@@ -187,7 +176,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
     renderPoints([],zoom)
     const collected=[]
     const allSourcesStartedAt=performance.now()
-    await Promise.all([deTask,czTask,itTask,skTask].map(async task=>{
+    await Promise.all([czTask,itTask,skTask].map(async task=>{
       const points=await task
       if(controller.signal.aborted) return
       collected.push(...points)
