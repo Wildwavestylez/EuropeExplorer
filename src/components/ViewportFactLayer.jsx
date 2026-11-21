@@ -18,7 +18,7 @@ async function getNeonSql() {
 }
 
 const MAX_POINTS = 1000
-const CACHE_LIMIT = 24
+const DATA_TILE_ZOOM = 6
 const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
 
 async function getNeonViewportPoints(table, bounds, country) {
@@ -115,7 +115,10 @@ function latitudeToTileY(latitude, zoom) {
 
 export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKeys=[] }) {
   const map=useMap()
-  const cacheRef=useRef(new Map())
+  const loadedNeonTilesRef=useRef({CZ:new Set(),IT:new Set()})
+  const inflightNeonTilesRef=useRef({CZ:new Set(),IT:new Set()})
+  const pointCacheRef=useRef(new Map())
+  const markerIdsRef=useRef(new Set())
   const tileCacheRef=useRef(new Map())
   const requestRef=useRef(null)
   const timerRef=useRef(null)
@@ -130,9 +133,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
     const zoom=map.getZoom()
     const south=Math.max(-90,bounds.getSouth()), north=Math.min(90,bounds.getNorth())
     const west=Math.max(-180,bounds.getWest()), east=Math.min(180,bounds.getEast())
-    const key=[zoom,south,west,north,east].map(v=>v.toFixed(3)).join(':')
-    const cached=cacheRef.current.get(key)
-    if (cached) { renderPoints(cached, zoom); return }
+    const key=[south,west,north,east].map(v=>v.toFixed(3)).join(':')
 
     const controller=new AbortController()
     requestRef.current?.abort()
@@ -165,8 +166,66 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
       }
     }
 
-    const czTask=independent('Czechia / Neon',()=>getNeonViewportPoints('czechia_cap_records',{south,west,north,east},'CZ'))
-    const itTask=independent('Italy / Neon',()=>getNeonViewportPoints('italy_cap_records',{south,west,north,east},'IT'))
+    // Neon data is cached by fixed geographic tiles, not by the current
+    // display viewport. A zoom change inside an already loaded tile makes no
+    // database request. In-flight tile keys prevent overlapping requests.
+    const getMissingNeonTiles = country => {
+      const minX=longitudeToTileX(west,DATA_TILE_ZOOM), maxX=longitudeToTileX(east,DATA_TILE_ZOOM)
+      const minY=latitudeToTileY(north,DATA_TILE_ZOOM), maxY=latitudeToTileY(south,DATA_TILE_ZOOM)
+      const missing=[]
+      for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) {
+        const tileKey=`${DATA_TILE_ZOOM}/${x}/${y}`
+        if(!loadedNeonTilesRef.current[country].has(tileKey) && !inflightNeonTilesRef.current[country].has(tileKey)) {
+          missing.push({key:tileKey,x,y})
+          inflightNeonTilesRef.current[country].add(tileKey)
+        }
+      }
+      return missing
+    }
+    const boundsForTiles = tiles => {
+      const xs=tiles.map(tile=>tile.x), ys=tiles.map(tile=>tile.y)
+      const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys)
+      const n=2**DATA_TILE_ZOOM
+      const tileLon=x=>x/n*360-180
+      const tileLat=y=>Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI
+      return {west:tileLon(minX),east:tileLon(maxX+1),north:tileLat(minY),south:tileLat(maxY+1)}
+    }
+    const fetchNeonTiles = async (country, table, sourceName) => {
+      const tiles=getMissingNeonTiles(country)
+      if(!tiles.length) return []
+      const startedAt=performance.now()
+      const tileBounds=boundsForTiles(tiles)
+      try {
+        const points=await getNeonViewportPoints(table,tileBounds,country)
+        tiles.forEach(tile=>loadedNeonTilesRef.current[country].add(tile.key))
+        const fresh=[]
+        points.forEach(point=>{
+          const id=`${country}:${point.postcode}:${point.fact_id||point.title||point.lat+','+point.lon}`
+          if(!pointCacheRef.current.has(id)) {
+            pointCacheRef.current.set(id,point)
+            fresh.push(point)
+          }
+        })
+        if(layerRef.current) renderPoints(fresh,map.getZoom(),false)
+        timingCallbackRef.current?.({
+          source:sourceName,milliseconds:Math.round((performance.now()-startedAt)*10)/10,
+          points:points.length,viewport:key,status:'ok',
+        })
+        return fresh
+      } catch(error) {
+        console.error(`Europe Explorer ${sourceName} source failed:`,error)
+        timingCallbackRef.current?.({
+          source:sourceName,milliseconds:Math.round((performance.now()-startedAt)*10)/10,
+          points:0,viewport:key,status:'error',error:String(error?.message||error),
+        })
+        return []
+      } finally {
+        tiles.forEach(tile=>inflightNeonTilesRef.current[country].delete(tile.key))
+      }
+    }
+
+    const czTask=fetchNeonTiles('CZ','czechia_cap_records','Czechia / Neon')
+    const itTask=fetchNeonTiles('IT','italy_cap_records','Italy / Neon')
 
     const skTask=independent('Slovakia / published tiles',async()=>{
       if(!tileKeys.length) return []
@@ -185,32 +244,23 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
         const tilePoints=await response.json()
         if(!Array.isArray(tilePoints)) throw new Error(`Slovak map tile ${tileKey} has an invalid structure`)
         tileCacheRef.current.set(tileKey,tilePoints)
-        if(tileCacheRef.current.size>48) tileCacheRef.current.delete(tileCacheRef.current.keys().next().value)
         return tilePoints
       }))
       return loaded.flat().filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat>=south&&p.lat<=north&&p.lon>=west&&p.lon<=east)
         .map(p=>({...p,country_code:'SK',is_cluster:false}))
     })
 
-    // Render each country's pins as soon as its source finishes.
-    // This avoids blocking every marker behind the slowest country source.
-    renderPoints([],zoom)
-    const collected=[]
+    // Keep existing markers. Leaflet MarkerCluster recalculates clusters on
+    // zoom/pan; only genuinely new points are added to the layer.
     const allSourcesStartedAt=performance.now()
-    await Promise.all([czTask,itTask,skTask].map(async task=>{
-      const points=await task
-      if(controller.signal.aborted) return
-      collected.push(...points)
-      renderPoints(points,zoom,false)
-    }))
-    if(controller.signal.aborted) return
-    console.info('[Europe Explorer] all map sources settled', {
+    const skPoints=await skTask
+    if(!controller.signal.aborted) renderPoints(skPoints,map.getZoom(),false)
+    await Promise.all([czTask,itTask])
+    console.info('[Europe Explorer] map sources settled', {
       milliseconds:Math.round((performance.now()-allSourcesStartedAt)*10)/10,
-      points:collected.length,
+      newPoints:skPoints.length,
       viewport:key,
     })
-    cacheRef.current.set(key,collected)
-    if(cacheRef.current.size>CACHE_LIMIT) cacheRef.current.delete(cacheRef.current.keys().next().value)
   },[map,tileKeys])
 
   function renderPoints(points,zoom,clear=true) {
@@ -219,6 +269,9 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
     if(clear) layer.clearLayers()
     points.forEach(point=>{
       if(!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))) return
+      const markerId=point.is_cluster?null:`${point.country_code||'DE'}:${point.postcode||point.postal_code||''}:${point.fact_id||point.id||point.title||point.lat+','+point.lon}`
+      if(markerId && markerIdsRef.current.has(markerId)) return
+      if(markerId) markerIdsRef.current.add(markerId)
       const marker=makeMarker(point,zoom)
       if(!point.is_cluster) marker.on('click',()=>{
         const code=point.country_code||'DE'
@@ -245,7 +298,10 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
     })
     layerRef.current=layer
     map.addLayer(layer)
-    cacheRef.current.clear()
+    loadedNeonTilesRef.current={CZ:new Set(),IT:new Set()}
+    inflightNeonTilesRef.current={CZ:new Set(),IT:new Set()}
+    pointCacheRef.current.clear()
+    markerIdsRef.current.clear()
     tileCacheRef.current.clear()
     const scheduleLoad=()=>{
       if(timerRef.current) window.clearTimeout(timerRef.current)
