@@ -23,49 +23,70 @@ const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/tra
 
 async function getNeonViewportPoints(table, bounds, country) {
   const sql = await getNeonSql()
-  if (table === 'czechia_cap_records') {
-    const rows = await sql`
-      SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
-        fact->>'id' AS fact_id, fact->>'title' AS title,
-        fact->>'category' AS category, fact->>'map_category' AS map_category,
-        (fact->'location'->>'lat')::double precision AS lat,
-        (fact->'location'->>'lon')::double precision AS lon
-      FROM public.czechia_cap_records r
-      CROSS JOIN LATERAL jsonb_array_elements(
-        CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
-      ) AS items(fact)
-      WHERE r.workflow_status='published' AND r.content_version=5
-        AND jsonb_typeof(fact->'location')='object'
-        AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-        AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-        AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
-        AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
-      LIMIT 1000
-    `
-    return rows.map(row => ({...row, postcode:String(row.postcode), lat:Number(row.lat), lon:Number(row.lon), country_code:country, is_cluster:false}))
-      .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
+  const allPoints = []
+  let offset = 0
+
+  // Fetch every matching point in stable batches. MAX_POINTS is a page size,
+  // never a total-result cap; this prevents large viewports from losing regions.
+  while (true) {
+    let rows
+    if (table === 'czechia_cap_records') {
+      rows = await sql`
+        SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
+          fact->>'id' AS fact_id, fact->>'title' AS title,
+          fact->>'category' AS category, fact->>'map_category' AS map_category,
+          (fact->'location'->>'lat')::double precision AS lat,
+          (fact->'location'->>'lon')::double precision AS lon
+        FROM public.czechia_cap_records r
+        CROSS JOIN LATERAL jsonb_array_elements(
+          CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
+        ) AS items(fact)
+        WHERE r.workflow_status='published' AND r.content_version=5
+          AND jsonb_typeof(fact->'location')='object'
+          AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+          AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
+        ORDER BY r.postcode, fact->>'id'
+        LIMIT ${MAX_POINTS} OFFSET ${offset}
+      `
+    } else {
+      rows = await sql`
+        SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
+          fact->>'id' AS fact_id, fact->>'title' AS title,
+          fact->>'category' AS category, fact->>'map_category' AS map_category,
+          (fact->'location'->>'lat')::double precision AS lat,
+          (fact->'location'->>'lon')::double precision AS lon
+        FROM public.italy_cap_records r
+        CROSS JOIN LATERAL jsonb_array_elements(
+          CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
+        ) AS items(fact)
+        WHERE r.workflow_status='published' AND r.record->>'status'='published'
+          AND r.record->>'data_version'='5'
+          AND jsonb_typeof(fact->'location')='object'
+          AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+          AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
+        ORDER BY r.postcode, fact->>'id'
+        LIMIT ${MAX_POINTS} OFFSET ${offset}
+      `
+    }
+
+    allPoints.push(...rows.map(row => ({
+      ...row,
+      postcode: String(row.postcode),
+      lat: Number(row.lat),
+      lon: Number(row.lon),
+      country_code: country,
+      is_cluster: false,
+    })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon)))
+
+    if (rows.length < MAX_POINTS) break
+    offset += MAX_POINTS
   }
-  const rows = await sql`
-    SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
-      fact->>'id' AS fact_id, fact->>'title' AS title,
-      fact->>'category' AS category, fact->>'map_category' AS map_category,
-      (fact->'location'->>'lat')::double precision AS lat,
-      (fact->'location'->>'lon')::double precision AS lon
-    FROM public.italy_cap_records r
-    CROSS JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
-    ) AS items(fact)
-    WHERE r.workflow_status='published' AND r.record->>'status'='published'
-      AND r.record->>'data_version'='5'
-      AND jsonb_typeof(fact->'location')='object'
-      AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
-      AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
-    LIMIT 1000
-  `
-  return rows.map(row => ({...row, postcode:String(row.postcode), lat:Number(row.lat), lon:Number(row.lon), country_code:country, is_cluster:false}))
-    .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
+
+  return allPoints
 }
 
 function makeMarker(point, zoom) {
