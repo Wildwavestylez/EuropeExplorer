@@ -125,13 +125,35 @@ async function queryCountry(source, bounds) {
   return normalizeRows(allRows, source.code)
 }
 
+const MAP_CATEGORY_ICONS = {
+  castle: '🏰',
+  religious_site: '⛪',
+  historical_monument: '🏛️',
+  architecture: '🏛️',
+  historic_city: '🏘️',
+  museum: '🖼️',
+  archaeological_site: '🏺',
+  nature: '🌳',
+  viewpoint_landscape: '🏞️',
+  park_garden: '🌿',
+  technical_heritage: '⚙️',
+  cultural_site: '🎭',
+  visitor_attraction: '🎡',
+  local_culture: '🎨',
+  science_site: '🔬',
+  personality: '👤',
+  sports_venue: '🏟️',
+}
+
 function makeMarker(point, zoom) {
+  const category = point.map_category || point.category
+  const icon = MAP_CATEGORY_ICONS[category] || '📍'
   return L.marker([point.lat, point.lon], {
     icon: L.divIcon({
-      className: zoom >= 13 ? 'fact-pin-icon fact-pin-detailed' : 'fact-pin-icon',
-      html: '<span class="fact-pin-dot"></span>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
+      className: 'fact-pin-icon',
+      html: '<span class="fact-pin-emoji" role="img" aria-label="' + icon + '">' + icon + '</span>',
+      iconSize: [34, 38],
+      iconAnchor: [17, 34],
     }),
     title: zoom >= 13 ? (point.title || point.postcode || '') : '',
     riseOnHover: true,
