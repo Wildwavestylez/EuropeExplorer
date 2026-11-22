@@ -19,7 +19,6 @@ async function getNeonSql() {
 
 const MAX_POINTS = 1000
 const DATA_TILE_ZOOM = 6
-const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
 
 async function getNeonViewportPoints(table, bounds, country) {
   const sql = await getNeonSql()
@@ -50,16 +49,37 @@ async function getNeonViewportPoints(table, bounds, country) {
         ORDER BY r.postcode, fact->>'id'
         LIMIT ${MAX_POINTS} OFFSET ${offset}
       `
-    } else {
+    } else if (table === 'italy_cap_records') {
       rows = await sql`
-        SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
+        SELECT r.postcode, (r.record)->>'city' AS city,
           fact->>'id' AS fact_id, fact->>'title' AS title,
           fact->>'category' AS category, fact->>'map_category' AS map_category,
           (fact->'location'->>'lat')::double precision AS lat,
           (fact->'location'->>'lon')::double precision AS lon
         FROM public.italy_cap_records r
         CROSS JOIN LATERAL jsonb_array_elements(
-          CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
+          CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
+        ) AS items(fact)
+        WHERE r.workflow_status='published' AND r.record->>'status'='published'
+          AND r.record->>'data_version'='5'
+          AND jsonb_typeof(fact->'location')='object'
+          AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+          AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+          AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
+        ORDER BY r.postcode, fact->>'id'
+        LIMIT ${MAX_POINTS} OFFSET ${offset}
+      `
+    } else if (table === 'slovakia_cap_records') {
+      rows = await sql`
+        SELECT r.postcode, (r.record)->>'city' AS city,
+          fact->>'id' AS fact_id, fact->>'title' AS title,
+          fact->>'category' AS category, fact->>'map_category' AS map_category,
+          (fact->'location'->>'lat')::double precision AS lat,
+          (fact->'location'->>'lon')::double precision AS lon
+        FROM public.slovakia_cap_records r
+        CROSS JOIN LATERAL jsonb_array_elements(
+          CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
         ) AS items(fact)
         WHERE r.workflow_status='published' AND r.record->>'status'='published'
           AND r.record->>'data_version'='5'
@@ -115,8 +135,8 @@ function latitudeToTileY(latitude, zoom) {
 
 export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKeys=[] }) {
   const map=useMap()
-  const loadedNeonTilesRef=useRef({CZ:new Set(),IT:new Set()})
-  const inflightNeonTilesRef=useRef({CZ:new Set(),IT:new Set()})
+  const loadedNeonTilesRef=useRef({CZ:new Set(),IT:new Set(),SK:new Set()})
+  const inflightNeonTilesRef=useRef({CZ:new Set(),IT:new Set(),SK:new Set()})
   const pointCacheRef=useRef(new Map())
   const markerIdsRef=useRef(new Set())
   const tileCacheRef=useRef(new Map())
@@ -227,28 +247,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
     const czTask=fetchNeonTiles('CZ','czechia_cap_records','Czechia / Neon')
     const itTask=fetchNeonTiles('IT','italy_cap_records','Italy / Neon')
 
-    const skTask=independent('Slovakia / published tiles',async()=>{
-      if(!tileKeys.length) return []
-      const tileZoom=Math.min(8,Math.max(4,Math.floor(zoom)-2))
-      const minX=longitudeToTileX(west,tileZoom), maxX=longitudeToTileX(east,tileZoom)
-      const minY=latitudeToTileY(north,tileZoom), maxY=latitudeToTileY(south,tileZoom)
-      const available=new Set(tileKeys), requested=[]
-      for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) {
-        const tileKey=`${tileZoom}/${x}/${y}`
-        if(available.has(tileKey)) requested.push(tileKey)
-      }
-      const loaded=await Promise.all(requested.map(async tileKey=>{
-        if(tileCacheRef.current.has(tileKey)) return tileCacheRef.current.get(tileKey)
-        const response=await fetch(SLOVAKIA_TILES_URL+tileKey+'.json',{signal:controller.signal,headers:{Accept:'application/json'},cache:'default'})
-        if(!response.ok) throw new Error(`Slovak map tile ${tileKey} returned HTTP ${response.status}`)
-        const tilePoints=await response.json()
-        if(!Array.isArray(tilePoints)) throw new Error(`Slovak map tile ${tileKey} has an invalid structure`)
-        tileCacheRef.current.set(tileKey,tilePoints)
-        return tilePoints
-      }))
-      return loaded.flat().filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat>=south&&p.lat<=north&&p.lon>=west&&p.lon<=east)
-        .map(p=>({...p,country_code:'SK',is_cluster:false}))
-    })
+    const skTask=fetchNeonTiles('SK','slovakia_cap_records','Slovakia / Neon')
 
     // Keep existing markers. Leaflet MarkerCluster recalculates clusters on
     // zoom/pan; only genuinely new points are added to the layer.
@@ -298,8 +297,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, tileKe
     })
     layerRef.current=layer
     map.addLayer(layer)
-    loadedNeonTilesRef.current={CZ:new Set(),IT:new Set()}
-    inflightNeonTilesRef.current={CZ:new Set(),IT:new Set()}
+    loadedNeonTilesRef.current={CZ:new Set(),IT:new Set(),SK:new Set()}
+    inflightNeonTilesRef.current={CZ:new Set(),IT:new Set(),SK:new Set()}
     pointCacheRef.current.clear()
     markerIdsRef.current.clear()
     tileCacheRef.current.clear()
