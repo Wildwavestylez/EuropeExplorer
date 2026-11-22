@@ -133,6 +133,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
   const requestIdRef = useRef(0)
   const timerRef = useRef(null)
   const layerRef = useRef(null)
+  const markerByKeyRef = useRef(new Map())
   const callbackRef = useRef(onSelectFact)
   const timingCallbackRef = useRef(onSourceTiming)
   callbackRef.current = onSelectFact
@@ -141,10 +142,26 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
   const renderPoints = useCallback((points, zoom) => {
     const layer = layerRef.current
     if (!layer) return
-    // Rebuild from the current viewport only. Previously visited areas must
-    // not leave thousands of off-screen markers attached to the map.
-    layer.clearLayers()
-    const markers = points.map(point => {
+
+    // Diff the incoming viewport against existing markers. Do not tear down
+    // thousands of markers on every fetch: that forces a full cluster rebuild
+    // and causes visible frame drops while panning/zooming.
+    const desired = new Map()
+    points.forEach(point => {
+      const key = [point.country_code, point.postcode, point.fact_id || (point.lat + ':' + point.lon)].join(':')
+      desired.set(key, point)
+    })
+
+    for (const [key, marker] of markerByKeyRef.current) {
+      if (!desired.has(key)) {
+        layer.removeLayer(marker)
+        markerByKeyRef.current.delete(key)
+      }
+    }
+
+    const additions = []
+    for (const [key, point] of desired) {
+      if (markerByKeyRef.current.has(key)) continue
       const marker = makeMarker(point, zoom)
       marker.on('click', () => {
         callbackRef.current?.({
@@ -160,9 +177,11 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
           location: { lat: point.lat, lon: point.lon },
         })
       })
-      return marker
-    })
-    layer.addLayers(markers)
+      markerByKeyRef.current.set(key, marker)
+      additions.push(marker)
+    }
+
+    if (additions.length) layer.addLayers(additions)
   }, [])
 
   const loadViewport = useCallback(async () => {
@@ -264,8 +283,6 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
         return L.divIcon({ className: 'fact-cluster-icon', html: '<span class="fact-cluster-count">' + total + '</span>', iconSize: [42, 42], iconAnchor: [21, 21] })
       },
       chunkedLoading: true,
-      animate: false,
-      animateAddingMarkers: false,
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
@@ -291,6 +308,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       requestIdRef.current += 1
       map.removeLayer(layer)
       layer.clearLayers()
+      markerByKeyRef.current.clear()
       layerRef.current = null
       cacheRef.current.clear()
       loadedBoundsRef.current = null
