@@ -238,6 +238,49 @@ async function getSlovakiaPublishedPlaces() {
   return slovakiaPublishedPlacesPromise
 }
 
+async function getSlovakiaFactCount() {
+  const sql = await getItalySql()
+  const rows = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM public.slovakia_cap_records r
+    CROSS JOIN LATERAL jsonb_array_elements(
+      CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
+    ) AS items(fact)
+    WHERE r.workflow_status='published'
+      AND r.record->>'status'='published'
+      AND r.record->>'data_version'='5'
+      AND jsonb_typeof(fact->'location')='object'
+      AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+      AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+      AND (fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
+      AND (fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
+  `
+  return Number(rows[0]?.count || 0)
+}
+
+async function getSlovakiaRandomFact(offset) {
+  const sql = await getItalySql()
+  const rows = await sql`
+    SELECT r.postcode, r.record, items.fact
+    FROM public.slovakia_cap_records r
+    CROSS JOIN LATERAL jsonb_array_elements(
+      CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
+    ) AS items(fact)
+    WHERE r.workflow_status='published'
+      AND r.record->>'status'='published'
+      AND r.record->>'data_version'='5'
+      AND jsonb_typeof(items.fact->'location')='object'
+      AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
+      AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
+      AND (items.fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
+      AND (items.fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
+    ORDER BY r.postcode, items.fact->>'id'
+    OFFSET ${offset}
+    LIMIT 1
+  `
+  return rows[0] || null
+}
+
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' }, { id: 'nl', label: 'NL' }, 
@@ -830,16 +873,14 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
-      // Germany is temporarily excluded from map discovery until its Neon migration.
-      const [skIndex, czCount] = await Promise.all([
-        getSlovakiaExplorerIndex().catch(error => {
-          console.warn('Slovak random-discovery index is unavailable:', error)
-          return { map_point_count: 0, random_tiles: [] }
+      // Random discovery reads published V5 facts directly from Neon.
+      const [skCount, czCount] = await Promise.all([
+        getSlovakiaFactCount().catch(error => {
+          console.warn('Slovak Neon random-discovery source is unavailable:', error)
+          return 0
         }),
         getCzechFactCount(),
       ])
-      const skTiles = skIndex.random_tiles || []
-      const skCount = skIndex.map_point_count || 0
       const total = skCount + czCount
       if (!total) throw new Error('No published facts with coordinates')
 
@@ -857,34 +898,25 @@ export default function App() {
         const postcode=String(czRow.postcode)
         selectedPlace={id:'CZ:'+postcode,country_code:'CZ',postal_code:postcode,city:content.city||'',municipality:content.city||'',district:content.district||'',region:content.state||'',county:content.county||'',latitude:content.representative_point?.lat??lat,longitude:content.representative_point?.lon??lon,content}
       } else {
-        let tileOffset = offset
-        let selectedTile = null
-        for (const tile of skTiles) {
-          if (tileOffset < tile.count) { selectedTile = tile; break }
-          tileOffset -= tile.count
-        }
-        if (!selectedTile) throw new Error('No Slovak random map tile could be selected.')
-        const tilePoints = await getSlovakiaTile(selectedTile.key)
-        const mapFact = tilePoints[tileOffset]
-        if (!mapFact) throw new Error('Selected Slovak random map tile is missing the expected fact.')
-        const content = await getSlovakiaRecord(mapFact.postcode)
-        fact = (content.facts || []).find(item => String(item.id) === String(mapFact.fact_id))
-        if (!fact) throw new Error('Selected Slovak fact is not present in its published V5 record')
-        const record = skIndex.records.find(item => item.postcode === mapFact.postcode)
-        if (!record) throw new Error('Selected Slovak postal area is missing from the Explorer index')
-        lat = mapFact.lat
-        lon = mapFact.lon
+        const skRow = await getSlovakiaRandomFact(offset)
+        if (!skRow) throw new Error('No Slovak random fact could be selected.')
+        const content = skRow.record
+        fact = content.facts.find(item => String(item.id) === String(skRow.fact.id))
+        if (!fact) throw new Error('Selected Slovak fact is not present in its published V5 record.')
+        lat = Number(fact.location.lat)
+        lon = Number(fact.location.lon)
+        const postcode = String(skRow.postcode)
         selectedPlace = {
-          id: 'SK:' + record.postcode,
+          id: 'SK:' + postcode,
           country_code: 'SK',
-          postal_code: record.postcode,
-          city: record.city,
-          municipality: record.city,
-          district: record.district || '',
-          region: record.state || '',
-          county: record.county || '',
-          latitude: record.representative_point?.lat ?? lat,
-          longitude: record.representative_point?.lon ?? lon,
+          postal_code: postcode,
+          city: content.city || '',
+          municipality: content.city || '',
+          district: content.district || '',
+          region: content.state || '',
+          county: content.county || '',
+          latitude: content.representative_point?.lat ?? lat,
+          longitude: content.representative_point?.lon ?? lon,
           content,
         }
       }
