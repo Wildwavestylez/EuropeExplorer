@@ -28,6 +28,7 @@ async function getNeonSql() {
 
 const MAX_DETAIL_POINTS = 5000
 const MAX_CACHE_ENTRIES = 24
+const VIEWPORT_BUFFER_RATIO = 0.45
 
 function intersects(a, b) {
   return a.west <= b.east && a.east >= b.west && a.south <= b.north && a.north >= b.south
@@ -127,6 +128,8 @@ function makeMarker(point, zoom) {
 export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
   const map = useMap()
   const cacheRef = useRef(new Map())
+  const loadedBoundsRef = useRef(null)
+  const loadedSourcesRef = useRef('')
   const requestIdRef = useRef(0)
   const timerRef = useRef(null)
   const layerRef = useRef(null)
@@ -141,7 +144,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     // Rebuild from the current viewport only. Previously visited areas must
     // not leave thousands of off-screen markers attached to the map.
     layer.clearLayers()
-    points.forEach(point => {
+    const markers = points.map(point => {
       const marker = makeMarker(point, zoom)
       marker.on('click', () => {
         callbackRef.current?.({
@@ -157,8 +160,9 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
           location: { lat: point.lat, lon: point.lon },
         })
       })
-      layer.addLayer(marker)
+      return marker
     })
+    layer.addLayers(markers)
   }, [])
 
   const loadViewport = useCallback(async () => {
@@ -170,9 +174,28 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       west: Math.max(-180, mapBounds.getWest()),
       east: Math.min(180, mapBounds.getEast()),
     }
-    const key = makeViewportKey(bounds, zoom)
-    const requestId = ++requestIdRef.current
     const sources = COUNTRY_SOURCES.filter(source => intersects(source.bounds, bounds))
+    const sourceKey = sources.map(source => source.code).join(',')
+    const loadedBounds = loadedBoundsRef.current
+    const containsViewport = loadedBounds &&
+      bounds.south >= loadedBounds.south && bounds.north <= loadedBounds.north &&
+      bounds.west >= loadedBounds.west && bounds.east <= loadedBounds.east
+
+    // Keep the same marker set while the user moves/zooms inside the already
+    // loaded safety margin. MarkerCluster can then recalculate naturally,
+    // instead of clearing and rebuilding every cluster after each gesture.
+    if (containsViewport && loadedSourcesRef.current === sourceKey) return
+
+    const latPadding = (bounds.north - bounds.south) * VIEWPORT_BUFFER_RATIO
+    const lonPadding = (bounds.east - bounds.west) * VIEWPORT_BUFFER_RATIO
+    const queryBounds = {
+      south: Math.max(-90, bounds.south - latPadding),
+      north: Math.min(90, bounds.north + latPadding),
+      west: Math.max(-180, bounds.west - lonPadding),
+      east: Math.min(180, bounds.east + lonPadding),
+    }
+    const key = makeViewportKey(queryBounds, 0)
+    const requestId = ++requestIdRef.current
 
     if (!sources.length) {
       renderPoints([], zoom)
@@ -187,7 +210,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     const results = await Promise.all(sources.map(async source => {
       const startedAt = performance.now()
       try {
-        const points = await queryCountry(source, bounds)
+        const points = await queryCountry(source, queryBounds)
         timingCallbackRef.current?.({
           source: source.label,
           milliseconds: Math.round((performance.now() - startedAt) * 10) / 10,
@@ -215,6 +238,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     if (requestId !== requestIdRef.current) return
     const points = results.flat()
     cacheRef.current.set(key, points)
+    loadedBoundsRef.current = queryBounds
+    loadedSourcesRef.current = sourceKey
     while (cacheRef.current.size > MAX_CACHE_ENTRIES) {
       cacheRef.current.delete(cacheRef.current.keys().next().value)
     }
@@ -223,7 +248,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       zoom,
       countriesQueried: sources.map(source => source.code),
       points: points.length,
-      bounds,
+      bounds: queryBounds,
+      visibleBounds: bounds,
     })
   }, [map, renderPoints])
 
@@ -234,6 +260,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
         return L.divIcon({ className: 'fact-cluster-icon', html: '<span class="fact-cluster-count">' + total + '</span>', iconSize: [42, 42], iconAnchor: [21, 21] })
       },
       chunkedLoading: true,
+      animate: false,
+      animateAddingMarkers: false,
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
@@ -261,6 +289,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       layer.clearLayers()
       layerRef.current = null
       cacheRef.current.clear()
+      loadedBoundsRef.current = null
+      loadedSourcesRef.current = ''
     }
   }, [map, loadViewport])
 
