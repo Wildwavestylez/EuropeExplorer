@@ -174,7 +174,17 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       west: Math.max(-180, mapBounds.getWest()),
       east: Math.min(180, mapBounds.getEast()),
     }
-    const sources = COUNTRY_SOURCES.filter(source => intersects(source.bounds, bounds))
+    const latPadding = (bounds.north - bounds.south) * VIEWPORT_BUFFER_RATIO
+    const lonPadding = (bounds.east - bounds.west) * VIEWPORT_BUFFER_RATIO
+    const queryBounds = {
+      south: Math.max(-90, bounds.south - latPadding),
+      north: Math.min(90, bounds.north + latPadding),
+      west: Math.max(-180, bounds.west - lonPadding),
+      east: Math.min(180, bounds.east + lonPadding),
+    }
+    // Include every country touched by the buffered viewport so border and
+    // tri-border views do not miss points just outside the visible rectangle.
+    const sources = COUNTRY_SOURCES.filter(source => intersects(source.bounds, queryBounds))
     const sourceKey = sources.map(source => source.code).join(',')
     const loadedBounds = loadedBoundsRef.current
     const containsViewport = loadedBounds &&
@@ -186,14 +196,6 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     // instead of clearing and rebuilding every cluster after each gesture.
     if (containsViewport && loadedSourcesRef.current === sourceKey) return
 
-    const latPadding = (bounds.north - bounds.south) * VIEWPORT_BUFFER_RATIO
-    const lonPadding = (bounds.east - bounds.west) * VIEWPORT_BUFFER_RATIO
-    const queryBounds = {
-      south: Math.max(-90, bounds.south - latPadding),
-      north: Math.min(90, bounds.north + latPadding),
-      west: Math.max(-180, bounds.west - lonPadding),
-      east: Math.min(180, bounds.east + lonPadding),
-    }
     const key = makeViewportKey(queryBounds, 0)
     const requestId = ++requestIdRef.current
 
@@ -203,6 +205,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     }
 
     if (cacheRef.current.has(key)) {
+      loadedBoundsRef.current = queryBounds
+      loadedSourcesRef.current = sourceKey
       renderPoints(cacheRef.current.get(key), zoom)
       return
     }
