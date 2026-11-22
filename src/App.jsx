@@ -178,87 +178,64 @@ async function getCzechRandomFact(offset) {
   return rows[0]||null
 }
 
-const SLOVAKIA_INDEX_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_index.json'
-const SLOVAKIA_RECORDS_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/records/'
-const SLOVAKIA_TILES_URL = 'https://raw.githubusercontent.com/Wildwavestylez/travel/main/data/slovakia/explorer_tiles/'
-let slovakiaExplorerIndexPromise = null
 const slovakiaRecordCache = new Map()
-const slovakiaTileCache = new Map()
+let slovakiaPublishedPlacesPromise = null
 
-async function getSlovakiaTile(key) {
-  if (slovakiaTileCache.has(key)) return slovakiaTileCache.get(key)
-  const response = await fetch(SLOVAKIA_TILES_URL + key + '.json', {
-    headers: { Accept: 'application/json' },
-    cache: 'default',
-  })
-  if (!response.ok) throw new Error(`Slovak map tile ${key} returned HTTP ${response.status}`)
-  const points = await response.json()
-  if (!Array.isArray(points)) throw new Error(`Slovak map tile ${key} has an invalid structure.`)
-  slovakiaTileCache.set(key, points)
-  if (slovakiaTileCache.size > 48) slovakiaTileCache.delete(slovakiaTileCache.keys().next().value)
-  return points
-}
-
-async function getSlovakiaExplorerIndex() {
-  if (!slovakiaExplorerIndexPromise) {
-    slovakiaExplorerIndexPromise = fetch(SLOVAKIA_INDEX_URL, { headers: { Accept: 'application/json' }, cache: 'no-store' })
-      .then(async response => {
-        if (!response.ok) throw new Error(`Slovak Explorer index returned HTTP ${response.status}`)
-        const index = await response.json()
-        if (index.country_code !== 'SK' || index.data_version !== 5 || index.status !== 'published'
-          || !Array.isArray(index.records) || !Array.isArray(index.tile_keys)
-          || !Array.isArray(index.random_tiles) || index.count !== index.records.length
-          || !Number.isInteger(index.map_point_count) || index.map_point_count < 0) {
-          throw new Error('Slovak Explorer index has an invalid structure or version.')
-        }
-        const postcodes = new Set()
-        for (const record of index.records) {
-          if (!record || !/^[0-9]{5}$/.test(record.postcode || '')
-            || record.status !== 'published' || record.data_version !== 5
-            || postcodes.has(record.postcode)) {
-            throw new Error('Slovak Explorer index contains a non-V5, unpublished or duplicate record.')
-          }
-          postcodes.add(record.postcode)
-        }
-        const tileKeys = new Set(index.tile_keys)
-        for (const key of index.tile_keys) {
-          const parts = key.split('/')
-          if (parts.length !== 3 || !['4', '5', '6', '7', '8'].includes(parts[0])
-            || !parts.slice(1).every(part => /^\d+$/.test(part))) {
-            throw new Error('Slovak Explorer index contains an invalid map tile key.')
-          }
-        }
-        let randomPointCount = 0
-        for (const tile of index.random_tiles) {
-          if (!tile || !tileKeys.has(tile.key) || !Number.isInteger(tile.count) || tile.count < 1
-            || !tile.key.startsWith('8/')) {
-            throw new Error('Slovak Explorer index contains invalid random-tile metadata.')
-          }
-          randomPointCount += tile.count
-        }
-        if (randomPointCount !== index.map_point_count) {
-          throw new Error('Slovak Explorer index map-point count does not match its random tiles.')
-        }
-        return index
-      })
-      .catch(error => { slovakiaExplorerIndexPromise = null; throw error })
-  }
-  return slovakiaExplorerIndexPromise
+function isPublishedSlovakiaV5(record, workflowStatus) {
+  return workflowStatus === 'published' && record?.status === 'published' && Number(record?.data_version) === 5
 }
 
 async function getSlovakiaRecord(postcode) {
-  if (slovakiaRecordCache.has(postcode)) return slovakiaRecordCache.get(postcode)
-  const response = await fetch(SLOVAKIA_RECORDS_URL + encodeURIComponent(postcode) + '.json', {
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-  })
-  if (!response.ok) throw new Error(`Slovak record ${postcode} returned HTTP ${response.status}`)
-  const record = await response.json()
-  if (record.postcode !== postcode || record.status !== 'published' || record.data_version !== 5) {
-    throw new Error(`Slovak record ${postcode} is not a published V5 record.`)
+  const key = String(postcode)
+  if (slovakiaRecordCache.has(key)) return slovakiaRecordCache.get(key)
+  const sql = await getItalySql()
+  const rows = await sql`
+    SELECT postcode, workflow_status, record
+    FROM public.slovakia_cap_records
+    WHERE postcode = ${key}
+      AND workflow_status = 'published'
+      AND record->>'status' = 'published'
+      AND record->>'data_version' = '5'
+    LIMIT 1
+  `
+  const row = rows[0]
+  if (!row || !isPublishedSlovakiaV5(row.record, row.workflow_status) || String(row.record.postcode) !== key) {
+    throw new Error(`Slovak postcode ${key} is not a published V5 record.`)
   }
-  slovakiaRecordCache.set(postcode, record)
-  return record
+  slovakiaRecordCache.set(key, row.record)
+  return row.record
+}
+
+async function getSlovakiaPublishedPlaces() {
+  if (!slovakiaPublishedPlacesPromise) slovakiaPublishedPlacesPromise = (async () => {
+    const sql = await getItalySql()
+    const rows = await sql`
+      SELECT postcode, record
+      FROM public.slovakia_cap_records
+      WHERE workflow_status = 'published'
+        AND record->>'status' = 'published'
+        AND record->>'data_version' = '5'
+      ORDER BY postcode
+    `
+    return rows.filter(row => isPublishedSlovakiaV5(row.record, 'published') && String(row.record.postcode) === String(row.postcode)).map(({ postcode, record }) => ({
+      id: 'SK:' + postcode,
+      country_code: 'SK',
+      postal_code: String(postcode),
+      city: record.city || '',
+      municipality: record.city || '',
+      district: record.district || '',
+      region: record.state || '',
+      county: record.county || '',
+      latitude: record.representative_point?.lat ?? null,
+      longitude: record.representative_point?.lon ?? null,
+      status: record.status,
+      data_version: Number(record.data_version),
+    }))
+  })().catch(error => {
+    slovakiaPublishedPlacesPromise = null
+    throw error
+  })
+  return slovakiaPublishedPlacesPromise
 }
 
 const LANGS = [
@@ -456,14 +433,13 @@ export default function App() {
           console.warn('Could not load published Italian areas for the area picker:', error)
         }
         try {
-          const skIndex = await getSlovakiaExplorerIndex()
-          setSlovakiaTileKeys(skIndex.tile_keys || [])
-          records = records.concat(skIndex.records.map(record => ({
-            country_code: 'SK', region: record.state || '', county: record.county || '',
+          const slovakiaPlaces = await getSlovakiaPublishedPlaces()
+          records = records.concat(slovakiaPlaces.map(record => ({
+            country_code: 'SK', region: record.region || '', county: record.county || '',
           })))
         } catch (error) {
-          // GitHub availability must not block the existing DE/CZ area picker.
-          console.warn('Could not load Slovak areas for the area picker:', error)
+          // Slovakia is an independent Neon source; its failure must not block other countries.
+          console.warn('Could not load published Slovak areas for the area picker:', error)
         }
         if (!alive) return
         setAreaCatalog(records)
@@ -656,25 +632,11 @@ export default function App() {
           return
         }
         if (country === 'SK') {
-          const index = await getSlovakiaExplorerIndex()
-          all = index.records.map(record => ({
-            id: 'SK:' + record.postcode,
-            country_code: 'SK',
-            postal_code: record.postcode,
-            city: record.city,
-            municipality: record.city,
-            district: record.district || '',
-            region: record.state || '',
-            county: record.county || '',
-            latitude: record.representative_point?.lat ?? null,
-            longitude: record.representative_point?.lon ?? null,
-            data_version: 5,
-            status: 'published',
-          }))
+          all = await getSlovakiaPublishedPlaces()
           pageCount = 1
           if (!alive) return
           setPlaces(all)
-          setSlovakiaTileKeys(index.tile_keys)
+          setSlovakiaTileKeys([])
           setLoadDiagnostics(null)
           return
         }
