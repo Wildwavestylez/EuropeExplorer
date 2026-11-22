@@ -300,7 +300,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 52,
-      disableClusteringAtZoom: 14,
+      // Keep clusters enabled at every zoom level. Coincident facts stay
+      // visible as a counted cluster; spiderfy reveals them on click at max zoom.
     })
     layerRef.current = layer
     map.addLayer(layer)
