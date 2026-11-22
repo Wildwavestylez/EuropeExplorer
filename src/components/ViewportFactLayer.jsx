@@ -115,6 +115,7 @@ async function queryCountry(source, bounds) {
         ORDER BY r.postcode, fact->>'id'
         LIMIT ${pageSize} OFFSET ${offset}
       `
+    }
 
     allRows.push(...rows)
     if (rows.length < pageSize) break
