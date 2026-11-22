@@ -403,7 +403,6 @@ function getCounty(place) {
 
 export default function App() {
   const [places, setPlaces] = useState([])
-  const [slovakiaTileKeys, setSlovakiaTileKeys] = useState([])
   const [activeMode, setActiveMode] = useState('')
   const [introSearch, setIntroSearch] = useState('')
   const [introMessage, setIntroMessage] = useState('')
@@ -644,7 +643,6 @@ export default function App() {
         let from = 0
         let all = []
         let pageCount = 0
-        if (country !== 'SK') setSlovakiaTileKeys([])
         if (country === 'CZ') {
           all = await getCzechPublishedPlaces()
           pageCount = 1
@@ -679,7 +677,6 @@ export default function App() {
           pageCount = 1
           if (!alive) return
           setPlaces(all)
-          setSlovakiaTileKeys([])
           setLoadDiagnostics(null)
           return
         }
@@ -1068,7 +1065,7 @@ export default function App() {
               <span className="place-marker"><MapPin size={17} /></span><span className="place-info"><strong>{p.city || p.postal_code}</strong><small>{[p.postal_code, p.region, p.district].filter(Boolean).join(' · ')}</small></span><ArrowUpRight size={15} className="row-arrow" />
             </button>)}
           </div>
-          <div className="panel-foot"><span className="status-dot" /> {country === 'SK' ? u.liveGithub : (country === 'IT' || country === 'CZ') ? 'LIVE DATA · NEON' : u.live}</div>
+          <div className="panel-foot"><span className="status-dot" /> {(country === 'SK' || country === 'IT' || country === 'CZ') ? 'LIVE DATA · NEON' : u.live}</div>
         </aside>
 
         <div className="map-panel">
@@ -1076,7 +1073,7 @@ export default function App() {
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
-            <ViewportFactLayer country={country} tileKeys={slovakiaTileKeys} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
+            <ViewportFactLayer country={country} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
