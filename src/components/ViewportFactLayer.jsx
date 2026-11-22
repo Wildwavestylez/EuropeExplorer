@@ -53,7 +53,7 @@ function normalizeRows(rows, country) {
 async function queryCountry(source, bounds) {
   const sql = await getNeonSql()
   if (source.table === 'czechia_cap_records') {
-    return normalizeRows(await sql\`
+    return normalizeRows(await sql`
       SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
         fact->>'id' AS fact_id, fact->>'title' AS title,
         fact->>'category' AS category, fact->>'map_category' AS map_category,
@@ -67,14 +67,14 @@ async function queryCountry(source, bounds) {
         AND jsonb_typeof(fact->'location')='object'
         AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
         AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-        AND (fact->'location'->>'lat')::double precision BETWEEN \${bounds.south} AND \${bounds.north}
-        AND (fact->'location'->>'lon')::double precision BETWEEN \${bounds.west} AND \${bounds.east}
+        AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+        AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
       ORDER BY r.postcode, fact->>'id'
-      LIMIT \${MAX_DETAIL_POINTS}
-    \`, source.code)
+      LIMIT ${MAX_DETAIL_POINTS}
+    `, source.code)
   }
   if (source.table === 'italy_cap_records') {
-    return normalizeRows(await sql\`
+    return normalizeRows(await sql`
       SELECT r.postcode, r.record->>'city' AS city, fact->>'id' AS fact_id,
         fact->>'title' AS title, fact->>'category' AS category, fact->>'map_category' AS map_category,
         (fact->'location'->>'lat')::double precision AS lat,
@@ -85,14 +85,14 @@ async function queryCountry(source, bounds) {
         AND jsonb_typeof(fact->'location')='object'
         AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
         AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-        AND (fact->'location'->>'lat')::double precision BETWEEN \${bounds.south} AND \${bounds.north}
-        AND (fact->'location'->>'lon')::double precision BETWEEN \${bounds.west} AND \${bounds.east}
+        AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+        AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
       ORDER BY r.postcode, fact->>'id'
-      LIMIT \${MAX_DETAIL_POINTS}
-    \`, source.code)
+      LIMIT ${MAX_DETAIL_POINTS}
+    `, source.code)
   }
   if (source.table === 'slovakia_cap_records') {
-    return normalizeRows(await sql\`
+    return normalizeRows(await sql`
       SELECT r.postcode, r.record->>'city' AS city, fact->>'id' AS fact_id,
         fact->>'title' AS title, fact->>'category' AS category, fact->>'map_category' AS map_category,
         (fact->'location'->>'lat')::double precision AS lat,
@@ -103,11 +103,11 @@ async function queryCountry(source, bounds) {
         AND jsonb_typeof(fact->'location')='object'
         AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
         AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-        AND (fact->'location'->>'lat')::double precision BETWEEN \${bounds.south} AND \${bounds.north}
-        AND (fact->'location'->>'lon')::double precision BETWEEN \${bounds.west} AND \${bounds.east}
+        AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
+        AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
       ORDER BY r.postcode, fact->>'id'
-      LIMIT \${MAX_DETAIL_POINTS}
-    \`, source.code)
+      LIMIT ${MAX_DETAIL_POINTS}
+    `, source.code)
   }
   return []
 }
