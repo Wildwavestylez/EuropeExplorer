@@ -6,7 +6,7 @@ export async function onRequestGet(context) {
     const postcode = String(params.get('postcode') || '').trim()
     if (country === 'DE') return json({ error: 'This postal area has not been published to Neon yet.' }, 404)
     if (!isValidCountry(country)) return json({ error: 'Unsupported country.' }, 400)
-    if (!/^\\d{5}$/.test(postcode)) return json({ error: 'Invalid postal code.' }, 400)
+    if (!/^\d{5}$/.test(postcode)) return json({ error: 'Invalid postal code.' }, 400)
     const sql = getSql(context)
     let rows
     if (country === 'CZ') rows = await sql`
