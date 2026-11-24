@@ -46,7 +46,9 @@ export async function onRequestGet(context) {
 
     const stableBounds = snapBounds(south, west, north, east)
     const queryBounds = { south: stableBounds.south, west: stableBounds.west, north: stableBounds.north, east: stableBounds.east }
-    const cacheUrl = new URL('https://europe-explorer-cache.invalid/api/viewport')
+    const cacheUrl = new URL(context.request.url)
+    cacheUrl.pathname = '/__ee_internal_cache__/viewport'
+    cacheUrl.search = ''
     cacheUrl.searchParams.set('country', country)
     cacheUrl.searchParams.set('south', String(queryBounds.south))
     cacheUrl.searchParams.set('west', String(queryBounds.west))
