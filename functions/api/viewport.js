@@ -140,6 +140,6 @@ export async function onRequestGet(context) {
       cellSize: aggregate ? cellSize : null,
     })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, context.request, 'viewport')
   }
 }
