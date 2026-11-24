@@ -389,7 +389,7 @@ export default function App() {
   }, [country, activeMode])
 
   const startWithLocation = () => {
-    selectionRequestRef.current += 1
+    const requestId = ++selectionRequestRef.current
     setIntroMessage('')
     if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : lang === 'de' ? 'Dieses Gerät unterstützt keine Standortbestimmung.' : lang === 'nl' ? 'Dit apparaat ondersteunt geen locatiebepaling.' : 'Location is not available on this device.'); return }
     setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : lang === 'de' ? 'Warte auf die Standortfreigabe…' : lang === 'nl' ? 'Wachten op toestemming voor je locatie…' : 'Waiting for location permission…')
