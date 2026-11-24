@@ -313,17 +313,34 @@
 }
 
  
-/* Static project-support panel shown when a single map discovery is selected. */
+
 .support-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
   margin-top: 24px;
   padding: 24px;
-  border: 1px solid rgba(213, 166, 106, 0.28);
-  border-radius: 12px;
-  background: linear-gradient(145deg, rgba(213, 166, 106, 0.10), rgba(255,255,255,0.025));
+  overflow: hidden;
+  border: 1px solid rgba(213, 166, 106, 0.3);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(213, 166, 106, 0.12), rgba(255,255,255,0.025) 68%);
+}
+.support-card-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(213, 166, 106, 0.25);
+  border-radius: 50%;
+  color: #e7b56f;
+  background: rgba(213, 166, 106, 0.08);
 }
 .support-card-kicker {
   display: block;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   color: #d5a66a;
   font-size: 10px;
   letter-spacing: 0.18em;
@@ -339,6 +356,41 @@
 .support-card p {
   margin: 0;
   color: #aebdca;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.7;
+}
+.support-card p.support-card-lead {
+  margin-bottom: 8px;
+  color: #d8e0e7;
+  font-size: 15px;
+}
+.support-card-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 13px 15px;
+  border-radius: 8px;
+  color: #172b3d;
+  background: #d5a66a;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+}
+.support-card-coming {
+  padding: 5px 7px;
+  border: 1px solid rgba(23,43,61,0.25);
+  border-radius: 4px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.support-card-thanks {
+  align-self: center;
+  margin-top: 16px;
+  color: #899baa;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-align: center;
 }
