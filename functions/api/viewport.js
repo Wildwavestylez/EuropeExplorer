@@ -66,8 +66,8 @@ export async function onRequestGet(context) {
           ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY postcode, fact_id) AS row_num
         FROM bucketed
       )
-      SELECT postcode, city, fact_id, title, category, map_category, lat, lon, feature_count
-      FROM ranked WHERE row_num=1 ORDER BY postcode, fact_id LIMIT ${limit} OFFSET ${offset}
+      SELECT bucket, postcode, city, fact_id, title, category, map_category, lat, lon, feature_count
+      FROM ranked WHERE row_num=1 ORDER BY bucket LIMIT ${limit} OFFSET ${offset}
     `
     else if (country === 'IT') rows = await sql`
       WITH raw AS (
@@ -93,8 +93,8 @@ export async function onRequestGet(context) {
           ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY postcode, fact_id) AS row_num
         FROM bucketed
       )
-      SELECT postcode, city, fact_id, title, category, map_category, lat, lon, feature_count
-      FROM ranked WHERE row_num=1 ORDER BY postcode, fact_id LIMIT ${limit} OFFSET ${offset}
+      SELECT bucket, postcode, city, fact_id, title, category, map_category, lat, lon, feature_count
+      FROM ranked WHERE row_num=1 ORDER BY bucket LIMIT ${limit} OFFSET ${offset}
     `
     else rows = await sql`
       WITH raw AS (
@@ -120,8 +120,8 @@ export async function onRequestGet(context) {
           ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY postcode, fact_id) AS row_num
         FROM bucketed
       )
-      SELECT postcode, city, fact_id, title, category, map_category, lat, lon, feature_count
-      FROM ranked WHERE row_num=1 ORDER BY postcode, fact_id LIMIT ${limit} OFFSET ${offset}
+      SELECT bucket, postcode, city, fact_id, title, category, map_category, lat, lon, feature_count
+      FROM ranked WHERE row_num=1 ORDER BY bucket LIMIT ${limit} OFFSET ${offset}
     `
 
     const points = rows.map(row => ({
