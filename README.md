@@ -1,28 +1,39 @@
 # Europe Explorer
 
-A Europe-wide discovery map powered by the shared Supabase postal-code dataset.
+A Europe-wide discovery map backed by published postal-area records in Neon.
 
 ## Stack
 - React + Vite
 - Leaflet + OpenStreetMap with marker clustering
-- Supabase (read-only public client)
+- Cloudflare Pages Functions for the public data API
+- Neon Postgres for published V5 data
+- Supabase remains the working environment for German and Czech content creation and audit; it is not queried by the public Explorer.
 
-## Data rules
-- The application queries only records with `status = published`.
-- Records are checked against the applicable country JSON Schema and V3 structural rules before display.
-- Every fact with valid `location.lat` and `location.lon` coordinates is shown as an individual map pin.
-- Nearby fact pins are grouped into clusters when zoomed out.
-- No service-role credentials are used in the browser.
+## Data lifecycle
+- The public app reads only through `/api/*` endpoints.
+- The API uses the encrypted Cloudflare Pages secret `DATABASE_URL`; database credentials are never sent to the browser.
+- Only records with `workflow_status = published` and the country's applicable V5 marker are returned.
+- Germany remains unavailable in the public app until audited records are migrated to Neon.
+- Czechia currently uses `content_version = 5`; Italy and Slovakia use the V5 marker inside their JSON records. These existing rules are deliberately preserved until a separately planned schema migration.
+
+## Cloudflare Pages
+- Framework preset: Vite
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Root directory: `/`
+- Add encrypted environment variable / secret: `DATABASE_URL` (Neon connection string)
+- Pages Functions are in `functions/` and expose:
+  - `GET /api/places?country=CZ|IT|SK`
+  - `GET /api/place?country=CZ|IT|SK&postcode=12345`
+  - `GET /api/viewport?country=CZ|IT|SK&south=...&west=...&north=...&east=...&offset=0`
+
+Germany is intentionally omitted from the API allowlist until its published Neon table and audited migration are ready.
 
 ## Development
 ```bash
 npm install
 npm run dev
+npm run build
 ```
 
-## Deployment
-GitHub Actions builds the Vite app and deploys it to GitHub Pages on every push to `main`.
-The repository Pages setting must use **GitHub Actions** as its build and deployment source.
-
-Public URL: https://wildwavestylez.github.io/EuropeExplorer/
-
+The API requires the Cloudflare Pages Functions runtime and the encrypted `DATABASE_URL` secret. GitHub Actions currently validates the Vite build only; it does not deploy this API-dependent frontend to GitHub Pages.
