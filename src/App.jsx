@@ -1,286 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter } from 'lucide-react'
-import { supabase } from './lib/supabase'
 import ViewportFactLayer from './components/ViewportFactLayer'
 
 
-const ITALY_DATABASE_URL = 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
-let italySqlPromise = null
-const italyRecordCache = new Map()
-
-async function getItalySql() {
-  if (!italySqlPromise) italySqlPromise = import('https://esm.sh/@neondatabase/serverless@1.2.1?bundle')
-    .then(({ neon }) => neon(ITALY_DATABASE_URL, { disableWarningInBrowsers: true }))
-    .catch(error => { italySqlPromise = null; throw error })
-  return italySqlPromise
+async function apiGet(path) {
+  const response = await fetch(path)
+  const payload = await response.json()
+  if (!response.ok) throw new Error(payload.error || 'Data service request failed.')
+  return payload
 }
-
-function isPublishedItalyV5(record, workflowStatus) {
-  return workflowStatus === 'published' && record?.status === 'published' && Number(record?.data_version) === 5
-}
-
-async function getItalyRecord(postcode) {
-  if (italyRecordCache.has(postcode)) return italyRecordCache.get(postcode)
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT postcode, workflow_status, record
-    FROM public.italy_cap_records
-    WHERE postcode = ${postcode}
-      AND workflow_status = 'published'
-      AND record->>'status' = 'published'
-      AND record->>'data_version' = '5'
-    LIMIT 1
-  `
-  const row = rows[0]
-  if (!row || !isPublishedItalyV5(row.record, row.workflow_status) || row.record.postcode !== postcode) {
-    throw new Error(`Italian CAP ${postcode} is not a published V5 record.`)
+const recordCache = new Map()
+const placesCache = new Map()
+async function getPublishedPlaces(country) {
+  if (!placesCache.has(country)) {
+    placesCache.set(country, apiGet('/api/places?country=' + country).then(result => result.places || []).catch(error => {
+      placesCache.delete(country)
+      throw error
+    }))
   }
-  italyRecordCache.set(postcode, row.record)
-  return row.record
+  return placesCache.get(country)
 }
-
-async function getItalyPublishedPlaces() {
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT postcode, record
-    FROM public.italy_cap_records
-    WHERE workflow_status = 'published'
-      AND record->>'status' = 'published'
-      AND record->>'data_version' = '5'
-    ORDER BY postcode
-  `
-  return rows.filter(row => isPublishedItalyV5(row.record, 'published')).map(({ postcode, record }) => ({
-    id: 'IT:' + postcode,
-    country_code: 'IT',
-    postal_code: postcode,
-    city: record.city || '',
-    municipality: record.city || '',
-    district: record.district || '',
-    region: record.state || '',
-    county: record.county || '',
-    latitude: record.representative_point?.lat ?? null,
-    longitude: record.representative_point?.lon ?? null,
-    status: record.status,
-    data_version: Number(record.data_version),
-  }))
+async function getPublishedRecord(country, postcode) {
+  const key = country + ':' + postcode
+  if (recordCache.has(key)) return recordCache.get(key)
+  const result = await apiGet('/api/place?country=' + country + '&postcode=' + encodeURIComponent(postcode))
+  recordCache.set(key, result.content)
+  return result.content
 }
-
-const czechRecordCache = new Map()
-let czechPublishedPlacesPromise = null
-async function getCzechRecord(postcode) {
-  const key = String(postcode)
-  if (czechRecordCache.has(key)) return czechRecordCache.get(key)
-  const sql = await getItalySql()
-  const rows = await sql`SELECT COALESCE(record->'content',record) AS record FROM public.czechia_cap_records WHERE postcode = ${key} AND workflow_status = 'published' AND content_version = 5 LIMIT 1`
-  if (!rows[0]) throw new Error(`Czech postcode ${key} is not published V5.`)
-  czechRecordCache.set(key, rows[0].record)
-  return rows[0].record
-}
+const getItalyRecord = postcode => getPublishedRecord('IT', postcode)
+const getCzechRecord = postcode => getPublishedRecord('CZ', postcode)
+const getSlovakiaRecord = postcode => getPublishedRecord('SK', postcode)
+const getItalyPublishedPlaces = () => getPublishedPlaces('IT')
+const getCzechPublishedPlaces = () => getPublishedPlaces('CZ')
+const getSlovakiaPublishedPlaces = () => getPublishedPlaces('SK')
 async function getCzechDiagnostics() {
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT
-      r.postcode,
-      (COALESCE(r.record->'content',r.record))->>'city' AS city,
-      (COALESCE(r.record->'content',r.record))->'representative_point'->>'lat' AS representative_lat,
-      (COALESCE(r.record->'content',r.record))->'representative_point'->>'lon' AS representative_lon,
-      COUNT(items.fact) FILTER (WHERE items.fact IS NOT NULL)::int AS facts_total,
-      COUNT(items.fact) FILTER (
-        WHERE jsonb_typeof(items.fact->'location') = 'object'
-          AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (items.fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
-          AND (items.fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
-      )::int AS located_facts
-    FROM public.czechia_cap_records r
-    LEFT JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts') = 'array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
-    ) AS items(fact) ON true
-    WHERE r.workflow_status = 'published' AND r.content_version = 5
-    GROUP BY r.postcode, COALESCE(r.record->'content',r.record)
-    ORDER BY r.postcode
-  `
-  const rejected = []
-  let accepted = 0
-  let factsTotal = 0
-  let locatedFacts = 0
-  for (const row of rows) {
-    const total = Number(row.facts_total || 0)
-    const located = Number(row.located_facts || 0)
-    factsTotal += total
-    locatedFacts += located
-    const reasons = []
-    const repLat = Number(row.representative_lat)
-    const repLon = Number(row.representative_lon)
-    if (!Number.isFinite(repLat) || !Number.isFinite(repLon)
-      || repLat < -90 || repLat > 90 || repLon < -180 || repLon > 180) {
-      reasons.push('Chybí platný representative_point – PSČ nelze správně umístit do seznamu a výběru oblasti.')
-    }
-    if (total === 0) reasons.push('Záznam neobsahuje žádné facts.')
-    else if (located === 0) reasons.push(`Žádný z ${total} faktů nemá platné GPS souřadnice location.lat/lon.`)
-    else if (located < total) reasons.push(`Pouze ${located} z ${total} faktů má platné GPS souřadnice; ${total - located} se na mapu nevykreslí.`)
-    if (reasons.length) rejected.push({
-      postal_code: String(row.postcode),
-      city: row.city || '',
-      reasons,
-      facts_total: total,
-      located_facts: located,
-    })
-    else accepted += 1
-  }
-  return {
-    country: 'CZ',
-    fetched: rows.length,
-    accepted,
-    rejected,
-    pageCount: rows.length ? 1 : 0,
-    pageSize: rows.length,
-    factsTotal,
-    locatedFacts,
-    diagnosticsError: '',
-  }
+  const places = await getCzechPublishedPlaces()
+  return { country:'CZ', fetched:places.length, accepted:places.length, rejected:[], pageCount:1, pageSize:places.length, factsTotal:0, locatedFacts:0, diagnosticsError:'Diagnostika obsahu bude doplněna přes serverové API.' }
 }
-
-async function getCzechPublishedPlaces() {
-  if (!czechPublishedPlacesPromise) czechPublishedPlacesPromise = (async () => {
-    const sql = await getItalySql()
-    const rows = await sql`SELECT postcode, COALESCE(record->'content',record) AS record FROM public.czechia_cap_records WHERE workflow_status = 'published' AND content_version = 5 ORDER BY postcode`
-    return rows.map(({ postcode, record }) => ({
-      id: 'CZ:' + postcode,
-      country_code: 'CZ',
-      postal_code: String(postcode),
-      city: record.city || '',
-      municipality: record.city || '',
-      district: record.district || '',
-      region: record.state || '',
-      county: record.county || '',
-      latitude: record.representative_point?.lat ?? null,
-      longitude: record.representative_point?.lon ?? null,
-      status: 'published',
-      data_version: 5,
-    }))
-  })().catch(error => {
-    czechPublishedPlacesPromise = null
-    throw error
-  })
-  return czechPublishedPlacesPromise
-}
-
-async function getCzechFactCount() {
-  const sql = await getItalySql()
-  const rows = await sql`SELECT COUNT(*)::int AS count FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(fact->'location')='object' AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'`
-  return Number(rows[0]?.count||0)
-}
-async function getCzechRandomFact(offset) {
-  const sql = await getItalySql()
-  const rows = await sql`SELECT r.postcode,COALESCE(r.record->'content',r.record) AS record,items.fact FROM public.czechia_cap_records r CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END) items(fact) WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(items.fact->'location')='object' AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$' ORDER BY r.postcode,items.fact->>'id' OFFSET ${offset} LIMIT 1`
-  return rows[0]||null
-}
-
-const slovakiaRecordCache = new Map()
-let slovakiaPublishedPlacesPromise = null
-
-function isPublishedSlovakiaV5(record, workflowStatus) {
-  return workflowStatus === 'published' && record?.status === 'published' && Number(record?.data_version) === 5
-}
-
-async function getSlovakiaRecord(postcode) {
-  const key = String(postcode)
-  if (slovakiaRecordCache.has(key)) return slovakiaRecordCache.get(key)
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT postcode, workflow_status, record
-    FROM public.slovakia_cap_records
-    WHERE postcode = ${key}
-      AND workflow_status = 'published'
-      AND record->>'status' = 'published'
-      AND record->>'data_version' = '5'
-    LIMIT 1
-  `
-  const row = rows[0]
-  if (!row || !isPublishedSlovakiaV5(row.record, row.workflow_status) || String(row.record.postcode) !== key) {
-    throw new Error(`Slovak postcode ${key} is not a published V5 record.`)
-  }
-  slovakiaRecordCache.set(key, row.record)
-  return row.record
-}
-
-async function getSlovakiaPublishedPlaces() {
-  if (!slovakiaPublishedPlacesPromise) slovakiaPublishedPlacesPromise = (async () => {
-    const sql = await getItalySql()
-    const rows = await sql`
-      SELECT postcode, record
-      FROM public.slovakia_cap_records
-      WHERE workflow_status = 'published'
-        AND record->>'status' = 'published'
-        AND record->>'data_version' = '5'
-      ORDER BY postcode
-    `
-    return rows.filter(row => isPublishedSlovakiaV5(row.record, 'published') && String(row.record.postcode) === String(row.postcode)).map(({ postcode, record }) => ({
-      id: 'SK:' + postcode,
-      country_code: 'SK',
-      postal_code: String(postcode),
-      city: record.city || '',
-      municipality: record.city || '',
-      district: record.district || '',
-      region: record.state || '',
-      county: record.county || '',
-      latitude: record.representative_point?.lat ?? null,
-      longitude: record.representative_point?.lon ?? null,
-      status: record.status,
-      data_version: Number(record.data_version),
-    }))
-  })().catch(error => {
-    slovakiaPublishedPlacesPromise = null
-    throw error
-  })
-  return slovakiaPublishedPlacesPromise
-}
-
-async function getSlovakiaFactCount() {
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT COUNT(*)::int AS count
-    FROM public.slovakia_cap_records r
-    CROSS JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
-    ) AS items(fact)
-    WHERE r.workflow_status='published'
-      AND r.record->>'status'='published'
-      AND r.record->>'data_version'='5'
-      AND jsonb_typeof(fact->'location')='object'
-      AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
-      AND (fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
-  `
-  return Number(rows[0]?.count || 0)
-}
-
-async function getSlovakiaRandomFact(offset) {
-  const sql = await getItalySql()
-  const rows = await sql`
-    SELECT r.postcode, r.record, items.fact
-    FROM public.slovakia_cap_records r
-    CROSS JOIN LATERAL jsonb_array_elements(
-      CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END
-    ) AS items(fact)
-    WHERE r.workflow_status='published'
-      AND r.record->>'status'='published'
-      AND r.record->>'data_version'='5'
-      AND jsonb_typeof(items.fact->'location')='object'
-      AND (items.fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (items.fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-      AND (items.fact->'location'->>'lat')::double precision BETWEEN -90 AND 90
-      AND (items.fact->'location'->>'lon')::double precision BETWEEN -180 AND 180
-    ORDER BY r.postcode, items.fact->>'id'
-    OFFSET ${offset}
-    LIMIT 1
-  `
-  return rows[0] || null
-}
-
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' }, { id: 'nl', label: 'NL' }, 
@@ -450,23 +207,13 @@ export default function App() {
       setAreaCatalogLoading(true)
       setAreaCatalogError('')
       try {
-        const pageSize = 800
-        let from = 0
         let records = []
-        while (true) {
-          const { data, error } = await supabase
-            .from('postal_codes_explorer_completed')
-            .select('country_code,region,county')
-            .order('country_code')
-            .range(from, from + pageSize - 1)
-          if (error) throw error
-          const page = data || []
-          records = records.concat(page)
-          if (page.length < pageSize) break
-          from += pageSize
+        const [czechPlaces, italyPlaces, slovakiaPlaces] = await Promise.all([
+          getCzechPublishedPlaces(), getItalyPublishedPlaces(), getSlovakiaPublishedPlaces(),
+        ])
+        for (const [code, list] of [['CZ',czechPlaces],['IT',italyPlaces],['SK',slovakiaPlaces]]) {
+          records = records.concat(list.map(row => ({country_code:code,region:row.region||'',county:row.county||''})))
         }
-        const czechPlaces = await getCzechPublishedPlaces()
-        records = records.concat(czechPlaces.map(row => ({country_code:'CZ',region:row.region||'',county:row.county||''})))
         try {
           const italyPlaces = await getItalyPublishedPlaces()
           records = records.concat(italyPlaces.map(record => ({
@@ -563,18 +310,8 @@ export default function App() {
       } catch (error) { console.error('Could not load Slovak postal-area details:', error) }
       return
     }
-    const { data, error } = await supabase
-      .from('postal_codes')
-      .select('content')
-      .eq('id', place.id)
-      .single()
-    if (error) {
-      console.error('Could not load selected postal-area details:', error)
-      return
-    }
-    setSelected({ ...place, content: data.content })
-    setRandomFocusPoint(null)
-    setSelectedFact(null)
+    console.warn('This postal area is not yet published in Neon:', place)
+
   }, [])
 
   const handleFactSelect = useCallback(async (place, fact) => {
@@ -613,20 +350,7 @@ export default function App() {
       } catch (error) { console.error('Could not load Slovak fact details:', error) }
       return
     }
-    const { data, error } = await supabase
-      .from('postal_codes')
-      .select('content')
-      .eq('id', place.id)
-      .single()
-    if (error) {
-      console.error('Could not load selected postal-area details:', error)
-      return
-    }
-    setSelected({ ...place, content: data.content })
-    setRandomFocusPoint(null)
-    setSelectedFact(fact)
-    setFactSheetExpanded(false)
-    setFactSheetOpen(true)
+    console.warn('This fact source is not yet published in Neon:', place, fact)
   }, [])
 
   useEffect(() => {
@@ -682,41 +406,13 @@ export default function App() {
           return
         }
         if (country === 'DE') {
-          while (true) {
-            const { data, error } = await supabase
-              .from('postal_codes_explorer_completed')
-              .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,county')
-              .eq('country_code', country)
-              .order('postal_code')
-              .range(from, from + pageSize - 1)
-            if (error) throw error
-            const page = data || []
-            pageCount += 1
-            all = all.concat(page)
-            if (page.length < pageSize) break
-            from += pageSize
-          }
+          // Germany is intentionally hidden until audited V5 records are published to Neon.
+          all = []
+          pageCount = 0
         } else {
           // Czechia's published areas are listed from postal_codes directly;
           // the completed V3 view currently contains Germany only.
-          while (true) {
-            const { data, error } = await supabase
-              .from('postal_codes')
-              .select('id,country_code,postal_code,city,municipality,district,region,latitude,longitude,content')
-              .eq('country_code', country)
-              .eq('status', 'published')
-              .order('postal_code')
-              .range(from, from + pageSize - 1)
-            if (error) throw error
-            const page = (data || []).map(row => ({
-              ...row,
-              county: row.content?.county || '',
-            }))
-            pageCount += 1
-            all = all.concat(page)
-            if (page.length < pageSize) break
-            from += pageSize
-          }
+          all = []
         }
         if (!alive) return
         setPlaces(all)
@@ -730,37 +426,10 @@ export default function App() {
           pageCount, pageSize, diagnosticsError: '',
         })
         try {
-          // Keep diagnostic requests small: the view runs full JSON-schema checks
-          // and large pages can exceed Supabase's statement timeout.
-          const diagnosticsPageSize = 50
-          const { count: publishedCount, error: countError } = await supabase
-            .from('postal_codes')
-            .select('id', { count: 'exact', head: true })
-            .eq('country_code', 'DE')
-            .eq('status', 'published')
-          if (countError) throw countError
-          let diagnosticFrom = 0
-          let rejected = []
-          // The RPC paginates SOURCE published rows, then returns only rejected ones.
-          // Therefore an empty/short result page does not mean the source has ended.
-          while (diagnosticFrom < (publishedCount || 0)) {
-            const { data: diagnosticPage, error: diagnosticError } = await supabase
-              .rpc('get_postal_code_diagnostics_page', {
-                p_offset: diagnosticFrom,
-                p_limit: diagnosticsPageSize,
-              })
-            if (diagnosticError) throw diagnosticError
-            const page = diagnosticPage || []
-            rejected = rejected.concat(page.map(record => ({
-              ...record,
-              reasons: Array.isArray(record.reasons) ? record.reasons : [],
-            })))
-            diagnosticFrom += diagnosticsPageSize
-          }
-          if (alive) setLoadDiagnostics({
-            country, fetched: publishedCount || 0, accepted: all.length,
-            rejected, pageCount, pageSize, diagnosticsError: '',
-          })
+          if (country === 'DE') throw new Error('Germany is not yet published in Neon.')
+          const diagnostics = await getCzechDiagnostics()
+          if (alive && country === 'CZ') setLoadDiagnostics(diagnostics)
+        }
         } catch (diagnosticError) {
           console.error('Could not load postal-code diagnostics:', diagnosticError)
           if (alive) setLoadDiagnostics(current => current?.country === country
@@ -871,66 +540,35 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'de' ? 'Zufällige Entdeckung wird gesucht…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
-      // Random discovery reads published V5 facts directly from Neon.
-      const [skCount, czCount] = await Promise.all([
-        getSlovakiaFactCount().catch(error => {
-          console.warn('Slovak Neon random-discovery source is unavailable:', error)
-          return 0
-        }),
-        getCzechFactCount(),
-      ])
-      const total = skCount + czCount
-      if (!total) throw new Error('No published facts with coordinates')
-
-      const offset = Math.floor(Math.random() * total)
-      let selectedPlace
-      let fact
-      let lat
-      let lon
-
-      if (offset >= skCount) {
-        const czRow=await getCzechRandomFact(offset-skCount)
-        if(!czRow) throw new Error('No Czech random fact could be selected.')
-        const content=czRow.record; fact=czRow.fact
-        lat=Number(fact.location.lat); lon=Number(fact.location.lon)
-        const postcode=String(czRow.postcode)
-        selectedPlace={id:'CZ:'+postcode,country_code:'CZ',postal_code:postcode,city:content.city||'',municipality:content.city||'',district:content.district||'',region:content.state||'',county:content.county||'',latitude:content.representative_point?.lat??lat,longitude:content.representative_point?.lon??lon,content}
-      } else {
-        const skRow = await getSlovakiaRandomFact(offset)
-        if (!skRow) throw new Error('No Slovak random fact could be selected.')
-        const content = skRow.record
-        fact = content.facts.find(item => String(item.id) === String(skRow.fact.id))
-        if (!fact) throw new Error('Selected Slovak fact is not present in its published V5 record.')
-        lat = Number(fact.location.lat)
-        lon = Number(fact.location.lon)
-        const postcode = String(skRow.postcode)
-        selectedPlace = {
-          id: 'SK:' + postcode,
-          country_code: 'SK',
-          postal_code: postcode,
-          city: content.city || '',
-          municipality: content.city || '',
-          district: content.district || '',
-          region: content.state || '',
-          county: content.county || '',
-          latitude: content.representative_point?.lat ?? lat,
-          longitude: content.representative_point?.lon ?? lon,
-          content,
+      const countries = ['CZ','SK']
+      const shuffled = countries.sort(() => Math.random() - 0.5)
+      let discovery = null
+      for (const code of shuffled) {
+        const places = await getPublishedPlaces(code)
+        if (!places.length) continue
+        const candidates = [...places].sort(() => Math.random() - 0.5)
+        for (const place of candidates.slice(0, 12)) {
+          const content = await getPublishedRecord(code, place.postal_code)
+          const facts = (content?.facts || []).filter(f => Number.isFinite(Number(f?.location?.lat)) && Number.isFinite(Number(f?.location?.lon)))
+          if (facts.length) {
+            const fact = facts[Math.floor(Math.random() * facts.length)]
+            discovery = { place: { ...place, content }, fact }
+            break
+          }
         }
+        if (discovery) break
       }
-
-      setCountry(selectedPlace.country_code || 'DE')
-      setMapStart([lat, lon])
-      setSelected(selectedPlace)
-      setRandomFocusPoint([lat, lon])
-      setSelectedFact(fact)
-      setActiveMode('real')
+      if (!discovery) throw new Error('No published facts with coordinates')
+      setSelected(discovery.place)
+      setSelectedFact(discovery.fact)
+      setRandomFocusPoint({ lat:Number(discovery.fact.location.lat), lon:Number(discovery.fact.location.lon) })
+      setActiveMode('place')
       setFactSheetExpanded(false)
       setFactSheetOpen(true)
       setIntroMessage('')
-    } catch (e) {
-      console.error('Real Explorer failed:', e)
-      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : lang === 'de' ? 'Die zufällige Entdeckung konnte nicht geladen werden. Bitte versuche es erneut.' : lang === 'nl' ? 'De willekeurige ontdekking kon niet worden geladen. Probeer es erneut.' : 'Could not load a random discovery. Please try again.')
+    } catch (error) {
+      console.error('Random discovery failed:', error)
+      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst.' : 'Could not load a random discovery.')
     }
   }
 
@@ -968,37 +606,7 @@ export default function App() {
         setAreaMapPoints([])
         return
       }
-      const ids = filtered.map(place => place.id).filter(id => id != null)
-      if (!ids.length) {
-        setAreaMapPoints([])
-        return
-      }
-      try {
-        const points = []
-        const idBatchSize = 100
-        for (let offset = 0; offset < ids.length; offset += idBatchSize) {
-          const batch = ids.slice(offset, offset + idBatchSize)
-          let from = 0
-          const pageSize = 1000
-          while (true) {
-            const { data, error } = await supabase
-              .rpc('get_explorer_area_map_points', { p_postal_ids: batch })
-              .range(from, from + pageSize - 1)
-            if (error) throw error
-            const page = data || []
-            points.push(...page)
-            if (page.length < pageSize) break
-            from += pageSize
-          }
-        }
-        if (alive) setAreaMapPoints(points
-          .map(point => [Number(point.lat), Number(point.lon)])
-          .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)
-            && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180))
-      } catch (error) {
-        console.error('Could not load selected area map points:', error)
-        if (alive) setAreaMapPoints([])
-      }
+      setAreaMapPoints([])
     }
     loadAreaMapPoints()
     return () => { alive = false }
