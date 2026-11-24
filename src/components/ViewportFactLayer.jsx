@@ -120,6 +120,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
   const cacheRef = useRef(new Map())
   const loadedBoundsRef = useRef(null)
   const loadedSourcesRef = useRef('')
+  const loadedZoomRef = useRef(null)
   const requestIdRef = useRef(0)
   const abortRef = useRef(null)
   const timerRef = useRef(null)
@@ -139,7 +140,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     // and causes visible frame drops while panning/zooming.
     const desired = new Map()
     points.forEach(point => {
-      const key = [point.country_code, point.postcode, point.fact_id || (point.lat + ':' + point.lon)].join(':')
+      const key = [point.country_code, point.postcode, point.is_cluster ? 'grid:' + point.lat + ':' + point.lon : (point.fact_id || (point.lat + ':' + point.lon))].join(':')
       desired.set(key, point)
     })
 
@@ -208,7 +209,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     // Keep the same marker set while the user moves/zooms inside the already
     // loaded safety margin. MarkerCluster can then recalculate naturally,
     // instead of clearing and rebuilding every cluster after each gesture.
-    if (containsViewport && loadedSourcesRef.current === sourceKey) return
+    if (containsViewport && loadedSourcesRef.current === sourceKey && loadedZoomRef.current === zoom) return
 
     const key = makeViewportKey(queryBounds, zoom)
     const requestId = ++requestIdRef.current
@@ -224,6 +225,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     if (cacheRef.current.has(key)) {
       loadedBoundsRef.current = queryBounds
       loadedSourcesRef.current = sourceKey
+      loadedZoomRef.current = zoom
       renderPoints(cacheRef.current.get(key), zoom)
       return
     }
@@ -261,6 +263,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     cacheRef.current.set(key, points)
     loadedBoundsRef.current = queryBounds
     loadedSourcesRef.current = sourceKey
+    loadedZoomRef.current = zoom
     while (cacheRef.current.size > MAX_CACHE_ENTRIES) {
       cacheRef.current.delete(cacheRef.current.keys().next().value)
     }
@@ -314,6 +317,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       cacheRef.current.clear()
       loadedBoundsRef.current = null
       loadedSourcesRef.current = ''
+      loadedZoomRef.current = null
     }
   }, [map, loadViewport])
 
