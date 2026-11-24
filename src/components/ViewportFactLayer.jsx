@@ -182,7 +182,9 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
 
   const loadViewport = useCallback(async () => {
     const mapBounds = map.getBounds()
-    const zoom = map.getZoom()
+    // Leaflet can return fractional zoom values during touch gestures.
+    // The viewport API intentionally accepts integer zoom levels only.
+    const zoom = Math.round(map.getZoom())
     const bounds = {
       south: Math.max(-90, mapBounds.getSouth()),
       north: Math.min(90, mapBounds.getNorth()),
