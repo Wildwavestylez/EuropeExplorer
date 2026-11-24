@@ -35,8 +35,7 @@ const getItalyPublishedPlaces = () => getPublishedPlaces('IT')
 const getCzechPublishedPlaces = () => getPublishedPlaces('CZ')
 const getSlovakiaPublishedPlaces = () => getPublishedPlaces('SK')
 async function getCzechDiagnostics() {
-  const places = await getCzechPublishedPlaces()
-  return { country:'CZ', fetched:places.length, accepted:places.length, rejected:[], pageCount:1, pageSize:places.length, factsTotal:0, locatedFacts:0, diagnosticsError:'Diagnostika obsahu bude doplněna přes serverové API.' }
+  return apiGet('/api/diagnostics?country=CZ')
 }
 const LANGS = [
   { id: 'en', label: 'EN' }, { id: 'de', label: 'DE' }, { id: 'cs', label: 'CS' },
@@ -572,7 +571,7 @@ export default function App() {
           .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)))
         return
       }
-      // Germany's legacy Supabase map points are intentionally disabled.
+      // Germany's published map points will be enabled after its Neon migration.
       if (country === 'DE') {
         setAreaMapPoints([])
         return
