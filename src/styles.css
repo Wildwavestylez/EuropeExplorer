@@ -311,3 +311,34 @@
   .map{min-height:380px}
   .explorer-menu{position:fixed;top:calc(58px + env(safe-area-inset-top));right:8px;z-index:1300;width:min(390px,calc(100vw - 16px));max-height:calc(100dvh - 70px)}
 }
+
+ 
+/* Static project-support panel shown when a single map discovery is selected. */
+.support-card {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid rgba(213, 166, 106, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(213, 166, 106, 0.10), rgba(255,255,255,0.025));
+}
+.support-card-kicker {
+  display: block;
+  margin-bottom: 14px;
+  color: #d5a66a;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+.support-card h4 {
+  margin: 0 0 10px;
+  color: #f2f5f7;
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+.support-card p {
+  margin: 0;
+  color: #aebdca;
+  font-size: 14px;
+  line-height: 1.7;
+}
