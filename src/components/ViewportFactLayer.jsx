@@ -245,15 +245,17 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
         })
         return points
       } catch (error) {
-        timingCallbackRef.current?.({
-          source: source.label,
-          milliseconds: Math.round((performance.now() - startedAt) * 10) / 10,
-          points: 0,
-          viewport: key,
-          status: 'error',
-          error: String(error?.message || error),
-        })
-        if (error?.name !== 'AbortError') console.error('Europe Explorer ' + source.label + ' failed:', error)
+        if (error?.name !== 'AbortError') {
+          timingCallbackRef.current?.({
+            source: source.label,
+            milliseconds: Math.round((performance.now() - startedAt) * 10) / 10,
+            points: 0,
+            viewport: key,
+            status: 'error',
+            error: String(error?.message || error),
+          })
+          console.error('Europe Explorer ' + source.label + ' failed:', error)
+        }
         return []
       }
     }))
