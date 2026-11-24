@@ -23,10 +23,15 @@ async function getPublishedPlaces(country) {
 }
 async function getPublishedRecord(country, postcode) {
   const key = country + ':' + postcode
-  if (recordCache.has(key)) return recordCache.get(key)
-  const result = await apiGet('/api/place?country=' + country + '&postcode=' + encodeURIComponent(postcode))
-  recordCache.set(key, result.content)
-  return result.content
+  if (!recordCache.has(key)) {
+    recordCache.set(key, apiGet('/api/place?country=' + country + '&postcode=' + encodeURIComponent(postcode))
+      .then(result => result.content)
+      .catch(error => {
+        recordCache.delete(key)
+        throw error
+      }))
+  }
+  return recordCache.get(key)
 }
 const getItalyRecord = postcode => getPublishedRecord('IT', postcode)
 const getCzechRecord = postcode => getPublishedRecord('CZ', postcode)
@@ -510,7 +515,7 @@ export default function App() {
   const startExplorer = async () => {
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'de' ? 'Zufällige Entdeckung wird gesucht…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
-      const countries = ['CZ','SK']
+      const countries = ['CZ','SK','IT']
       const shuffled = countries.sort(() => Math.random() - 0.5)
       let discovery = null
       for (const code of shuffled) {
@@ -519,7 +524,15 @@ export default function App() {
         const candidates = [...places].sort(() => Math.random() - 0.5)
         for (const place of candidates.slice(0, 12)) {
           const content = await getPublishedRecord(code, place.postal_code)
-          const facts = (content?.facts || []).filter(f => Number.isFinite(Number(f?.location?.lat)) && Number.isFinite(Number(f?.location?.lon)))
+          const facts = (content?.facts || []).filter(f => {
+            const lat = f?.location?.lat
+            const lon = f?.location?.lon
+            return lat !== null && lat !== undefined && lat !== '' &&
+              lon !== null && lon !== undefined && lon !== '' &&
+              Number.isFinite(Number(lat)) && Number.isFinite(Number(lon)) &&
+              Number(lat) >= -90 && Number(lat) <= 90 &&
+              Number(lon) >= -180 && Number(lon) <= 180
+          })
           if (facts.length) {
             const fact = facts[Math.floor(Math.random() * facts.length)]
             discovery = { place: { ...place, content }, fact }
