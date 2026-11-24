@@ -256,7 +256,6 @@ export default function App() {
   const confirmAreaPicker = () => {
     if (!areaCountry) return
     selectionRequestRef.current += 1
-    selectionRequestRef.current += 1
 
     // Use only the postal areas already present in the published Explorer data.
     // The map will fit the representative points after the selected country's
