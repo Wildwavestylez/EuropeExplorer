@@ -196,6 +196,7 @@ export default function App() {
   const [factSheetExpanded, setFactSheetExpanded] = useState(false)
   const [factSheetOpen, setFactSheetOpen] = useState(false)
   const factSheetDragStart = useRef(null)
+  const selectionRequestRef = useRef(0)
   useEffect(() => {
     try { window.localStorage.setItem('europe-explorer-language', lang) } catch {}
   }, [lang])
@@ -254,6 +255,7 @@ export default function App() {
   }
   const confirmAreaPicker = () => {
     if (!areaCountry) return
+    selectionRequestRef.current += 1
 
     // Use only the postal areas already present in the published Explorer data.
     // The map will fit the representative points after the selected country's
@@ -274,14 +276,16 @@ export default function App() {
   }
 
   const handlePlaceSelect = useCallback(async (place) => {
+    const requestId = ++selectionRequestRef.current
     if (place.country_code === 'CZ') {
-      try { const content=await getCzechRecord(place.postal_code); setSelected({...place,content}); setRandomFocusPoint(null); setSelectedFact(null) }
+      try { const content=await getCzechRecord(place.postal_code); if (requestId !== selectionRequestRef.current) return; setSelected({...place,content}); setRandomFocusPoint(null); setSelectedFact(null) }
       catch(error) { console.error('Could not load Czech postal-area details:',error) }
       return
     }
     if (place.country_code === 'IT') {
       try {
         const content = await getItalyRecord(place.postal_code)
+        if (requestId !== selectionRequestRef.current) return
         setSelected({ ...place, content })
         setRandomFocusPoint(null)
         setSelectedFact(null)
@@ -291,6 +295,7 @@ export default function App() {
     if (place.country_code === 'SK') {
       try {
         const content = await getSlovakiaRecord(place.postal_code)
+        if (requestId !== selectionRequestRef.current) return
         setSelected({ ...place, content })
         setRandomFocusPoint(null)
         setSelectedFact(null)
@@ -302,9 +307,11 @@ export default function App() {
   }, [])
 
   const handleFactSelect = useCallback(async (place, fact) => {
+    const requestId = ++selectionRequestRef.current
     if (place.country_code === 'CZ') {
       try {
         const content=await getCzechRecord(place.postal_code)
+        if (requestId !== selectionRequestRef.current) return
         const canonicalFact=(content.facts||[]).find(item=>String(item.id)===String(fact.id))
         if(!canonicalFact) throw new Error('Selected fact is not present in the published Czech V5 record.')
         setSelected({...place,content}); setRandomFocusPoint(null); setSelectedFact(canonicalFact); setFactSheetExpanded(false); setFactSheetOpen(true)
@@ -314,6 +321,7 @@ export default function App() {
     if (place.country_code === 'IT') {
       try {
         const content = await getItalyRecord(place.postal_code)
+        if (requestId !== selectionRequestRef.current) return
         const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
         if (!canonicalFact) throw new Error('Selected fact is not present in the published Italian CAP record.')
         setSelected({ ...place, content })
@@ -327,6 +335,7 @@ export default function App() {
     if (place.country_code === 'SK') {
       try {
         const content = await getSlovakiaRecord(place.postal_code)
+        if (requestId !== selectionRequestRef.current) return
         const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
         if (!canonicalFact) throw new Error('Selected fact is not present in the published Slovak record.')
         setSelected({ ...place, content })
@@ -422,6 +431,7 @@ export default function App() {
   }, [country, activeMode])
 
   const startWithLocation = () => {
+    selectionRequestRef.current += 1
     setIntroMessage('')
     if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : lang === 'de' ? 'Dieses Gerät unterstützt keine Standortbestimmung.' : lang === 'nl' ? 'Dit apparaat ondersteunt geen locatiebepaling.' : 'Location is not available on this device.'); return }
     setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : lang === 'de' ? 'Warte auf die Standortfreigabe…' : lang === 'nl' ? 'Wachten op toestemming voor je locatie…' : 'Waiting for location permission…')
@@ -434,6 +444,7 @@ export default function App() {
 
   const searchIntroPlace = async (event) => {
     event.preventDefault()
+    const requestId = ++selectionRequestRef.current
     const term = introSearch.trim()
     if (!term) return
     setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : lang === 'de' ? 'Ort wird gesucht…' : lang === 'nl' ? 'Plaats zoeken…' : 'Searching for place…')
@@ -493,6 +504,7 @@ export default function App() {
         }
       }
 
+      if (requestId !== selectionRequestRef.current) return
       if (!coordinates) {
         setIntroMessage(lastError
           ? (lang === 'cs' ? 'Vyhledávací služby jsou právě nedostupné. Zkus to prosím za chvíli.' : lang === 'de' ? 'Die Suchdienste sind vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal.' : lang === 'nl' ? 'De zoekdiensten zijn tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw.' : 'Search services are temporarily unavailable. Please try again shortly.')
@@ -507,17 +519,20 @@ export default function App() {
       setActiveMode('search')
       setIntroMessage('')
     } catch (error) {
+      if (requestId !== selectionRequestRef.current) return
       console.error('Place search failed:', error)
       setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : lang === 'de' ? 'Die Suche ist fehlgeschlagen. Bitte versuche es erneut.' : lang === 'nl' ? 'Zoeken is mislukt. Probeer het opnieuw.' : 'Search failed. Please try again.')
     }
   }
 
   const startExplorer = async () => {
+    const requestId = ++selectionRequestRef.current
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'de' ? 'Zufällige Entdeckung wird gesucht…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
       // The API draws from the complete published V5 fact pool in Neon,
       // independently of the currently selected country or map filters.
       const discovery = await apiGet('/api/discover')
+      if (requestId !== selectionRequestRef.current) return
       setSelected(discovery.place)
       setSelectedFact(discovery.fact)
       setRandomFocusPoint(discovery.focus)
@@ -526,6 +541,7 @@ export default function App() {
       setFactSheetOpen(true)
       setIntroMessage('')
     } catch (error) {
+      if (requestId !== selectionRequestRef.current) return
       console.error('Random discovery failed:', error)
       setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst.' : 'Could not load a random discovery.')
     }
