@@ -15,17 +15,6 @@ const COUNTRY_SOURCES = [
   // Germany will be enabled here after its published Neon migration is complete.
 ]
 
-const NEON_DATABASE_URL = import.meta.env.VITE_NEON_DATABASE_URL || 'postgresql://travel_reader:7T_swaVG-dzyx_cxj_47upFddYwdVHzu4Y3TQcsiyBibJLKa@ep-floral-grass-bgpfzbe4-pooler.c-9.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require'
-let neonSqlPromise = null
-
-async function getNeonSql() {
-  if (!NEON_DATABASE_URL) throw new Error('VITE_NEON_DATABASE_URL is not configured')
-  if (!neonSqlPromise) neonSqlPromise = import('https://esm.sh/@neondatabase/serverless@1.2.1?bundle')
-    .then(({ neon }) => neon(NEON_DATABASE_URL, { disableWarningInBrowsers: true }))
-    .catch(error => { neonSqlPromise = null; throw error })
-  return neonSqlPromise
-}
-
 const MAX_DETAIL_POINTS = 5000
 const MAX_CACHE_ENTRIES = 24
 const VIEWPORT_BUFFER_RATIO = 0.45
@@ -51,77 +40,24 @@ function normalizeRows(rows, country) {
 }
 
 async function queryCountry(source, bounds) {
-  const sql = await getNeonSql()
   const allRows = []
   const pageSize = 1000
   let offset = 0
-
-  // Page through the complete viewport result. A fixed total LIMIT silently
-  // dropped later postcodes (including Bratislava) when a country had >5,000
-  // matching facts in a zoomed-out view.
   while (true) {
-    let rows = []
-    if (source.table === 'czechia_cap_records') {
-      rows = await sql`
-        SELECT r.postcode, (COALESCE(r.record->'content',r.record))->>'city' AS city,
-          fact->>'id' AS fact_id, fact->>'title' AS title,
-          fact->>'category' AS category, fact->>'map_category' AS map_category,
-          (fact->'location'->>'lat')::double precision AS lat,
-          (fact->'location'->>'lon')::double precision AS lon
-        FROM public.czechia_cap_records r
-        CROSS JOIN LATERAL jsonb_array_elements(
-          CASE WHEN jsonb_typeof(COALESCE(r.record->'content',r.record)->'facts')='array' THEN COALESCE(r.record->'content',r.record)->'facts' ELSE '[]'::jsonb END
-        ) AS items(fact)
-        WHERE r.workflow_status='published' AND r.content_version=5
-          AND jsonb_typeof(fact->'location')='object'
-          AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
-          AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
-        ORDER BY r.postcode, fact->>'id'
-        LIMIT ${pageSize} OFFSET ${offset}
-      `
-    } else if (source.table === 'italy_cap_records') {
-      rows = await sql`
-        SELECT r.postcode, r.record->>'city' AS city, fact->>'id' AS fact_id,
-          fact->>'title' AS title, fact->>'category' AS category, fact->>'map_category' AS map_category,
-          (fact->'location'->>'lat')::double precision AS lat,
-          (fact->'location'->>'lon')::double precision AS lon
-        FROM public.italy_cap_records r
-        CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END) AS items(fact)
-        WHERE r.workflow_status='published' AND r.record->>'status'='published' AND r.record->>'data_version'='5'
-          AND jsonb_typeof(fact->'location')='object'
-          AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
-          AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
-        ORDER BY r.postcode, fact->>'id'
-        LIMIT ${pageSize} OFFSET ${offset}
-      `
-    } else if (source.table === 'slovakia_cap_records') {
-      rows = await sql`
-        SELECT r.postcode, r.record->>'city' AS city, fact->>'id' AS fact_id,
-          fact->>'title' AS title, fact->>'category' AS category, fact->>'map_category' AS map_category,
-          (fact->'location'->>'lat')::double precision AS lat,
-          (fact->'location'->>'lon')::double precision AS lon
-        FROM public.slovakia_cap_records r
-        CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(r.record->'facts')='array' THEN r.record->'facts' ELSE '[]'::jsonb END) AS items(fact)
-        WHERE r.workflow_status='published' AND r.record->>'status'='published' AND r.record->>'data_version'='5'
-          AND jsonb_typeof(fact->'location')='object'
-          AND (fact->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (fact->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (fact->'location'->>'lat')::double precision BETWEEN ${bounds.south} AND ${bounds.north}
-          AND (fact->'location'->>'lon')::double precision BETWEEN ${bounds.west} AND ${bounds.east}
-        ORDER BY r.postcode, fact->>'id'
-        LIMIT ${pageSize} OFFSET ${offset}
-      `
-    }
-
+    const params = new URLSearchParams({
+      country: source.code,
+      south: String(bounds.south), west: String(bounds.west),
+      north: String(bounds.north), east: String(bounds.east),
+      offset: String(offset),
+    })
+    const response = await fetch('/api/viewport?' + params.toString())
+    const payload = await response.json()
+    if (!response.ok) throw new Error(payload.error || 'Viewport API request failed.')
+    const rows = payload.points || []
     allRows.push(...rows)
-    if (rows.length < pageSize) break
+    if (!payload.hasMore || rows.length < pageSize) break
     offset += pageSize
   }
-
   return normalizeRows(allRows, source.code)
 }
 
