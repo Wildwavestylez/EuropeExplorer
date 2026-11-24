@@ -1,8 +1,12 @@
 import { getSql, json, errorResponse, isValidCountry } from './_lib/db.js'
 
-function numberParam(params, key, min, max) {
-  const value = Number(params.get(key))
-  return Number.isFinite(value) && value >= min && value <= max ? value : null
+function numberParam(params, key, min, max, integer = false) {
+  const raw = params.get(key)
+  if (raw === null || raw.trim() === '') return null
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value < min || value > max) return null
+  if (integer && !Number.isInteger(value)) return null
+  return value
 }
 
 function cellSizeForZoom(zoom) {
@@ -23,8 +27,8 @@ export async function onRequestGet(context) {
     const west = numberParam(params, 'west', -180, 180)
     const north = numberParam(params, 'north', -90, 90)
     const east = numberParam(params, 'east', -180, 180)
-    const offset = numberParam(params, 'offset', 0, 1000000)
-    const zoom = numberParam(params, 'zoom', 0, 22)
+    const offset = numberParam(params, 'offset', 0, 1000000, true)
+    const zoom = numberParam(params, 'zoom', 0, 22, true)
     if ([south, west, north, east, offset, zoom].some(v => v === null) || south > north || west > east) {
       return json({ error: 'Invalid viewport bounds, zoom or offset.' }, 400)
     }
