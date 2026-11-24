@@ -486,13 +486,11 @@ export default function App() {
 
   const startExplorer = async () => {
     const requestId = ++selectionRequestRef.current
-    const requestId = ++selectionRequestRef.current
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'de' ? 'Zufällige Entdeckung wird gesucht…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
       // The API draws from the complete published V5 fact pool in Neon,
       // independently of the currently selected country or map filters.
       const discovery = await apiGet('/api/discover')
-      if (requestId !== selectionRequestRef.current) return
       if (requestId !== selectionRequestRef.current) return
       setSelected(discovery.place)
       setSelectedFact(discovery.fact)
