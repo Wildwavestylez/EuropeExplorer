@@ -43,7 +43,8 @@ function normalizeRows(rows, country) {
     lat: Number(row.lat),
     lon: Number(row.lon),
     country_code: country,
-    is_cluster: false,
+    is_cluster: Boolean(row.is_cluster),
+    feature_count: Number(row.feature_count) || 1,
   })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
 }
 
@@ -51,18 +52,20 @@ async function queryCountry(source, bounds, zoom, signal) {
   const allRows = []
   const pageSize = 1000
   let offset = 0
-  while (true) {
+  const maxPoints = MAX_DETAIL_POINTS
+  while (allRows.length < maxPoints) {
     const params = new URLSearchParams({
       country: source.code,
       south: String(bounds.south), west: String(bounds.west),
       north: String(bounds.north), east: String(bounds.east),
       offset: String(offset),
+      zoom: String(zoom),
     })
-    const response = await fetch('/api/viewport?' + params.toString())
+    const response = await fetch('/api/viewport?' + params.toString(), { signal })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || 'Viewport API request failed.')
     const rows = payload.points || []
-    allRows.push(...rows)
+    allRows.push(...rows.slice(0, maxPoints - allRows.length))
     if (!payload.hasMore || rows.length < pageSize) break
     offset += pageSize
   }
@@ -90,6 +93,14 @@ const MAP_CATEGORY_ICONS = {
 }
 
 function makeMarker(point, zoom) {
+  if (point.is_cluster) {
+    return L.marker([point.lat, point.lon], {
+      icon: L.divIcon({ className: 'fact-cluster-icon', html: '<span class="fact-cluster-count">' + point.feature_count + '</span>', iconSize: [42, 42], iconAnchor: [21, 21] }),
+      title: point.feature_count + ' discoveries',
+      riseOnHover: true,
+      featureCount: point.feature_count,
+    })
+  }
   const category = point.map_category || point.category
   const icon = MAP_CATEGORY_ICONS[category] || '📍'
   return L.marker([point.lat, point.lon], {
@@ -143,6 +154,10 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       if (markerByKeyRef.current.has(key)) continue
       const marker = makeMarker(point, zoom)
       marker.on('click', () => {
+        if (point.is_cluster) {
+          map.setView([point.lat, point.lon], Math.min(map.getMaxZoom(), map.getZoom() + 2), { animate: true })
+          return
+        }
         callbackRef.current?.({
           id: point.id || point.postal_id || point.country_code + ':' + point.postcode,
           country_code: point.country_code,
@@ -161,7 +176,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     }
 
     if (additions.length) layer.addLayers(additions)
-  }, [])
+  }, [map])
 
   const loadViewport = useCallback(async () => {
     const mapBounds = map.getBounds()
@@ -194,8 +209,11 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     // instead of clearing and rebuilding every cluster after each gesture.
     if (containsViewport && loadedSourcesRef.current === sourceKey) return
 
-    const key = makeViewportKey(queryBounds, 0)
+    const key = makeViewportKey(queryBounds, zoom)
     const requestId = ++requestIdRef.current
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
     if (!sources.length) {
       renderPoints([], zoom)
@@ -219,8 +237,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
           points: points.length,
           viewport: key,
           status: 'ok',
-          mode: 'exact viewport',
-          limited: points.length === MAX_DETAIL_POINTS,
+          mode: getAggregationCellSize(zoom) ? 'database grid aggregation' : 'individual facts',
+          limited: points.length >= MAX_DETAIL_POINTS,
         })
         return points
       } catch (error) {
@@ -232,7 +250,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
           status: 'error',
           error: String(error?.message || error),
         })
-        console.error('Europe Explorer ' + source.label + ' failed:', error)
+        if (error?.name !== 'AbortError') console.error('Europe Explorer ' + source.label + ' failed:', error)
         return []
       }
     }))
@@ -275,7 +293,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     const scheduleLoad = () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
       requestIdRef.current += 1
-      timerRef.current = window.setTimeout(() => loadViewport(), 180)
+      if (abortRef.current) abortRef.current.abort()
+      timerRef.current = window.setTimeout(() => loadViewport(), VIEWPORT_DEBOUNCE_MS)
     }
     map.on('moveend', scheduleLoad)
     map.on('zoomend', scheduleLoad)
@@ -286,6 +305,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       map.off('zoomend', scheduleLoad)
       if (timerRef.current) window.clearTimeout(timerRef.current)
       requestIdRef.current += 1
+      if (abortRef.current) abortRef.current.abort()
       map.removeLayer(layer)
       layer.clearLayers()
       markerByKeyRef.current.clear()
