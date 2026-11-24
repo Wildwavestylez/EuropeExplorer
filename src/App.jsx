@@ -413,6 +413,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [lang, setLang] = useState(getInitialLanguage)
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
   const [selected, setSelected] = useState(null)
   const [selectedFact, setSelectedFact] = useState(null)
   const [randomFocusPoint, setRandomFocusPoint] = useState(null)
@@ -778,20 +779,20 @@ export default function App() {
 
   const startWithLocation = () => {
     setIntroMessage('')
-    if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : lang === 'nl' ? 'Dit apparaat ondersteunt geen locatiebepaling.' : 'Location is not available on this device.'); return }
-    setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : lang === 'nl' ? 'Wachten op toestemming voor je locatie…' : 'Waiting for location permission…')
+    if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : lang === 'de' ? 'Dieses Gerät unterstützt keine Standortbestimmung.' : lang === 'nl' ? 'Dit apparaat ondersteunt geen locatiebepaling.' : 'Location is not available on this device.'); return }
+    setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : lang === 'de' ? 'Warte auf die Standortfreigabe…' : lang === 'nl' ? 'Wachten op toestemming voor je locatie…' : 'Waiting for location permission…')
     navigator.geolocation.getCurrentPosition(position => {
       setMapStart([position.coords.latitude, position.coords.longitude])
       setSelected(null); setSelectedFact(null); setActiveMode('location')
       setIntroMessage('')
-    }, () => setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : lang === 'nl' ? 'Je locatie kon niet worden bepaald. Controleer de locatietoestemming.' : 'Could not get your location. Check GPS permissions.'), { enableHighAccuracy: true, timeout: 12000 })
+    }, () => setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : lang === 'de' ? 'Dein Standort konnte nicht ermittelt werden. Überprüfe die Standortberechtigung.' : lang === 'nl' ? 'Je locatie kon niet worden bepaald. Controleer de locatietoestemming.' : 'Could not get your location. Check GPS permissions.'), { enableHighAccuracy: true, timeout: 12000 })
   }
 
   const searchIntroPlace = async (event) => {
     event.preventDefault()
     const term = introSearch.trim()
     if (!term) return
-    setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : lang === 'nl' ? 'Plaats zoeken…' : 'Searching for place…')
+    setIntroMessage(lang === 'cs' ? 'Vyhledávám místo…' : lang === 'de' ? 'Ort wird gesucht…' : lang === 'nl' ? 'Plaats zoeken…' : 'Searching for place…')
 
     const requestJson = async (url) => {
       const controller = new AbortController()
@@ -850,8 +851,8 @@ export default function App() {
 
       if (!coordinates) {
         setIntroMessage(lastError
-          ? (lang === 'cs' ? 'Vyhledávací služby jsou právě nedostupné. Zkus to prosím za chvíli.' : lang === 'nl' ? 'De zoekdiensten zijn tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw.' : 'Search services are temporarily unavailable. Please try again shortly.')
-          : (lang === 'cs' ? 'Místo se nepodařilo najít. Zkus upřesnit název nebo přidat zemi.' : lang === 'nl' ? 'Plaats niet gevonden. Probeer een specifiekere naam of voeg het land toe.' : 'Place not found. Try a more specific name or add the country.'))
+          ? (lang === 'cs' ? 'Vyhledávací služby jsou právě nedostupné. Zkus to prosím za chvíli.' : lang === 'de' ? 'Die Suchdienste sind vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal.' : lang === 'nl' ? 'De zoekdiensten zijn tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw.' : 'Search services are temporarily unavailable. Please try again shortly.')
+          : (lang === 'cs' ? 'Místo se nepodařilo najít. Zkus upřesnit název nebo přidat zemi.' : lang === 'de' ? 'Ort nicht gefunden. Versuche es mit einem genaueren Namen oder füge das Land hinzu.' : lang === 'nl' ? 'Plaats niet gevonden. Probeer een specifiekere naam of voeg het land toe.' : 'Place not found. Try a more specific name or add the country.'))
         return
       }
 
@@ -863,12 +864,12 @@ export default function App() {
       setIntroMessage('')
     } catch (error) {
       console.error('Place search failed:', error)
-      setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : lang === 'nl' ? 'Zoeken is mislukt. Probeer het opnieuw.' : 'Search failed. Please try again.')
+      setIntroMessage(lang === 'cs' ? 'Vyhledávání se nezdařilo. Zkus to prosím znovu.' : lang === 'de' ? 'Die Suche ist fehlgeschlagen. Bitte versuche es erneut.' : lang === 'nl' ? 'Zoeken is mislukt. Probeer het opnieuw.' : 'Search failed. Please try again.')
     }
   }
 
   const startExplorer = async () => {
-    setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
+    setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'de' ? 'Zufällige Entdeckung wird gesucht…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
       // Random discovery reads published V5 facts directly from Neon.
       const [skCount, czCount] = await Promise.all([
@@ -929,7 +930,7 @@ export default function App() {
       setIntroMessage('')
     } catch (e) {
       console.error('Real Explorer failed:', e)
-      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : lang === 'nl' ? 'De willekeurige ontdekking kon niet worden geladen. Probeer het opnieuw.' : 'Could not load a random discovery. Please try again.')
+      setIntroMessage(lang === 'cs' ? 'Náhodný objev se nepodařilo načíst. Zkus to znovu.' : lang === 'de' ? 'Die zufällige Entdeckung konnte nicht geladen werden. Bitte versuche es erneut.' : lang === 'nl' ? 'De willekeurige ontdekking kon niet worden geladen. Probeer es erneut.' : 'Could not load a random discovery. Please try again.')
     }
   }
 
@@ -1023,27 +1024,27 @@ export default function App() {
     {menuOpen && <div className="explorer-menu">
       <div className="explorer-menu-languages">{LANGS.map(l => <button key={l.id} className={lang === l.id ? 'active' : ''} onClick={() => setLang(l.id)}>{l.label}</button>)}</div>
       <div className="explorer-menu-actions">
-        <button className="welcome-option" onClick={() => { setMenuOpen(false); startWithLocation() }}><span className="welcome-icon"><MapPin size={20}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : lang === 'nl' ? 'Mijn huidige locatie' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : lang === 'nl' ? 'Ontdek bijzondere plekken in de buurt' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={17}/></button>
-        <form className="welcome-option welcome-search" onSubmit={event => { setMenuOpen(false); searchIntroPlace(event) }}><span className="welcome-icon"><Search size={20}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={event => setIntroSearch(event.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label={lang === 'nl' ? 'Zoeken' : 'Search'}><ArrowUpRight size={17}/></button></form>
-        <button className="welcome-option" onClick={() => { setMenuOpen(false); openAreaPicker() }}><span className="welcome-icon"><Globe2 size={20}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={17}/></button>
-        <button className="welcome-option welcome-real" onClick={() => { setMenuOpen(false); startExplorer() }}><span className="welcome-icon"><Compass size={21}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={17}/></button>
+        <button className="welcome-option" onClick={() => { setMenuOpen(false); startWithLocation() }}><span className="welcome-icon"><MapPin size={20}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : lang === 'de' ? 'Mein aktueller Standort' : lang === 'nl' ? 'Mijn huidige locatie' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : lang === 'de' ? 'Entdecke Sehenswürdigkeiten in deiner Nähe' : lang === 'nl' ? 'Ontdek bijzondere plekken in de buurt' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={17}/></button>
+        <form className="welcome-option welcome-search" onSubmit={event => { setMenuOpen(false); searchIntroPlace(event) }}><span className="welcome-icon"><Search size={20}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'de' ? 'Ort suchen' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={event => setIntroSearch(event.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'de' ? 'Stadt, Ort oder Postleitzahl…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label={lang === 'de' ? 'Suchen' : lang === 'nl' ? 'Zoeken' : 'Search'}><ArrowUpRight size={17}/></button></form>
+        <button className="welcome-option" onClick={() => { setMenuOpen(false); openAreaPicker() }}><span className="welcome-icon"><Globe2 size={20}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'de' ? 'Gebiet auswählen' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'de' ? 'Land, Region und Landkreis' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={17}/></button>
+        <button className="welcome-option welcome-real" onClick={() => { setMenuOpen(false); startExplorer() }}><span className="welcome-icon"><Compass size={21}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'de' ? 'Lass dich von einer zufälligen Entdeckung überraschen' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={17}/></button>
       </div>
     </div>}
 
     {!activeMode ? <section className="welcome-screen">
       <div className="welcome-orbit" aria-hidden="true"><div className="welcome-globe"><span /><i /><b /></div><small>EUROPE / DISCOVER</small></div>
       <div className="welcome-copy"><div className="eyebrow"><span />{lang === 'cs' ? 'EVROPA PLNÁ OBJEVŮ' : (copy[lang] || copy.en).eyebrow.toUpperCase()}</div>
-        <h1>{lang === 'cs' ? 'Kam se dnes podíváme?' : lang === 'nl' ? 'Waar ga je vandaag op ontdekking?' : 'Where will you explore today?'}</h1>
-        <p>{lang === 'cs' ? 'Objevuj zajímavá místa, příběhy a skrytá zákoutí Evropy.' : lang === 'nl' ? 'Ontdek bijzondere plekken, lokale verhalen en verborgen hoekjes van Europa.' : 'Discover remarkable places, local stories and hidden corners of Europe.'}</p>
+        <h1>{lang === 'cs' ? 'Kam se dnes podíváme?' : lang === 'de' ? 'Wohin geht deine Entdeckungsreise heute?' : lang === 'nl' ? 'Waar ga je vandaag op ontdekking?' : 'Where will you explore today?'}</h1>
+        <p>{lang === 'cs' ? 'Objevuj zajímavá místa, příběhy a skrytá zákoutí Evropy.' : lang === 'de' ? 'Entdecke besondere Orte, lokale Geschichten und verborgene Winkel Europas.' : lang === 'nl' ? 'Ontdek bijzondere plekken, lokale verhalen en verborgen hoekjes van Europa.' : 'Discover remarkable places, local stories and hidden corners of Europe.'}</p>
       </div>
       <div className="welcome-options">
-        <button className="welcome-option" onClick={startWithLocation}><span className="welcome-icon"><MapPin size={21}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : lang === 'nl' ? 'Mijn huidige locatie' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : lang === 'nl' ? 'Ontdek bijzondere plekken in de buurt' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={18}/></button>
-        <form className="welcome-option welcome-search" onSubmit={searchIntroPlace}><span className="welcome-icon"><Search size={21}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={e => setIntroSearch(e.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label={lang === 'nl' ? 'Zoeken' : 'Search'}><ArrowUpRight size={18}/></button></form>
-        <button className="welcome-option" onClick={openAreaPicker}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
-        <button className="welcome-option welcome-real" onClick={startExplorer}><span className="welcome-icon"><Compass size={22}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={18}/></button>
+        <button className="welcome-option" onClick={startWithLocation}><span className="welcome-icon"><MapPin size={21}/></span><span><strong>{lang === 'cs' ? 'Moje aktuální poloha' : lang === 'de' ? 'Mein aktueller Standort' : lang === 'nl' ? 'Mijn huidige locatie' : 'My current location'}</strong><small>{lang === 'cs' ? 'Objevuj zajímavosti v okolí' : lang === 'de' ? 'Entdecke Sehenswürdigkeiten in deiner Nähe' : lang === 'nl' ? 'Ontdek bijzondere plekken in de buurt' : 'Discover highlights nearby'}</small></span><ArrowUpRight size={18}/></button>
+        <form className="welcome-option welcome-search" onSubmit={searchIntroPlace}><span className="welcome-icon"><Search size={21}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'de' ? 'Ort suchen' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={e => setIntroSearch(e.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'de' ? 'Stadt, Ort oder Postleitzahl…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label={lang === 'de' ? 'Suchen' : lang === 'nl' ? 'Zoeken' : 'Search'}><ArrowUpRight size={18}/></button></form>
+        <button className="welcome-option" onClick={openAreaPicker}><span className="welcome-icon"><Globe2 size={21}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'de' ? 'Gebiet auswählen' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'de' ? 'Land, Region und Landkreis' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={18}/></button>
+        <button className="welcome-option welcome-real" onClick={startExplorer}><span className="welcome-icon"><Compass size={22}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'de' ? 'Lass dich von einer zufälligen Entdeckung überraschen' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={18}/></button>
       </div>
       {introMessage && <p className="welcome-message" role="status">{introMessage}</p>}
-      <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : lang === 'nl' ? 'EUROPA WACHT OM ONTDEKT TE WORDEN' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
+      <div className="welcome-foot"><span><i/> {lang === 'cs' ? 'EVROPA ČEKÁ NA OBJEVENÍ' : lang === 'de' ? 'EUROPA WARTET DARAUF, ENTDECKT ZU WERDEN' : lang === 'nl' ? 'EUROPA WACHT OM ONTDEKT TE WORDEN' : 'EUROPE IS WAITING TO BE DISCOVERED'}</span><span>01 — 04</span></div>
     </section> : <>
     <section className="hero">
       <div className="hero-copy">
@@ -1069,7 +1070,7 @@ export default function App() {
         </aside>
 
         <div className="map-panel">
-          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : country === 'SK' ? u.slovakia : country === 'IT' ? 'ITALY' : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
+          <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : country === 'SK' ? u.slovakia : country === 'IT' ? (lang === 'de' ? 'ITALIEN' : lang === 'cs' ? 'ITÁLIE' : lang === 'nl' ? 'ITALIË' : lang === 'fr' ? 'ITALIE' : lang === 'es' ? 'ITALIA' : lang === 'it' ? 'ITALIA' : 'ITALY') : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
@@ -1084,8 +1085,8 @@ export default function App() {
       </div>
       <div className="fact-screen-sheet-body">{activeFact.text || activeFact.description || ''}</div>
       <div className="fact-screen-sheet-category">{(mapCategoryCopy[lang]?.[activeFact.map_category] || editorialCategoryCopy[lang]?.[activeFact.category] || activeFact.category || 'Discovery').toUpperCase()}</div>
-      <button className="fact-screen-sheet-handle" onPointerDown={event => { factSheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture?.(event.pointerId) }} onPointerUp={event => { if (factSheetDragStart.current === null) return; const delta = event.clientY - factSheetDragStart.current; setFactSheetExpanded(Math.abs(delta) > 12 ? delta < 0 : !factSheetExpanded); factSheetDragStart.current = null }} onPointerCancel={() => { factSheetDragStart.current = null }} onClick={() => {}} aria-label={factSheetExpanded ? (lang === 'nl' ? 'Feit inklappen' : 'Collapse fact') : (lang === 'nl' ? 'Feit uitklappen' : 'Expand fact')}>
-        <span className="fact-screen-sheet-grip" /><span>{factSheetExpanded ? (lang === 'cs' ? 'TAŽENÍM DOLŮ SBALÍŠ' : lang === 'nl' ? 'VEEG OMLAAG OM TE SLUITEN' : 'DRAG DOWN TO COLLAPSE') : (lang === 'cs' ? 'TAŽENÍM NAHORU ZOBRAZÍŠ VÍCE' : lang === 'nl' ? 'VEEG OMHOOG OM MEER TE LEZEN' : 'DRAG UP TO READ MORE')}</span>
+      <button className="fact-screen-sheet-handle" onPointerDown={event => { factSheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture?.(event.pointerId) }} onPointerUp={event => { if (factSheetDragStart.current === null) return; const delta = event.clientY - factSheetDragStart.current; setFactSheetExpanded(Math.abs(delta) > 12 ? delta < 0 : !factSheetExpanded); factSheetDragStart.current = null }} onPointerCancel={() => { factSheetDragStart.current = null }} onClick={() => {}} aria-label={factSheetExpanded ? (lang === 'de' ? 'Fakt einklappen' : lang === 'nl' ? 'Feit inklappen' : 'Collapse fact') : (lang === 'de' ? 'Fakt ausklappen' : lang === 'nl' ? 'Feit uitklappen' : 'Expand fact')}>
+        <span className="fact-screen-sheet-grip" /><span>{factSheetExpanded ? (lang === 'cs' ? 'TAŽENÍM DOLŮ SBALÍŠ' : lang === 'de' ? 'NACH UNTEN ZIEHEN ZUM EINKLAPPEN' : lang === 'nl' ? 'VEEG OMLAAG OM TE SLUITEN' : 'DRAG DOWN TO COLLAPSE') : (lang === 'cs' ? 'TAŽENÍM NAHORU ZOBRAZÍŠ VÍCE' : lang === 'de' ? 'NACH OBEN ZIEHEN FÜR MEHR INHALTE' : lang === 'nl' ? 'VEEG OMHOOG OM MEER TE LEZEN' : 'DRAG UP TO READ MORE')}</span>
       </button>
     </section>}
         </div>
@@ -1103,17 +1104,17 @@ export default function App() {
     </>}
     {areaPickerOpen && <div className="area-picker-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setAreaPickerOpen(false) }}>
       <section className="area-picker" role="dialog" aria-modal="true" aria-labelledby="area-picker-title">
-        <button className="area-picker-close" onClick={() => setAreaPickerOpen(false)} aria-label={lang === 'cs' ? 'Zavřít' : lang === 'nl' ? 'Sluiten' : 'Close'}><X size={19}/></button>
+        <button className="area-picker-close" onClick={() => setAreaPickerOpen(false)} aria-label={lang === 'cs' ? 'Zavřít' : lang === 'de' ? 'Schließen' : lang === 'nl' ? 'Sluiten' : 'Close'}><X size={19}/></button>
         <div className="area-picker-kicker">{lang === 'cs' ? 'VÝBĚR OBLASTI' : lang === 'de' ? 'GEBIET AUSWÄHLEN' : lang === 'nl' ? 'GEBIED KIEZEN' : 'AREA SELECTION'}</div>
         <h2 id="area-picker-title">{lang === 'cs' ? 'Kam se chceš podívat?' : lang === 'de' ? 'Wohin möchtest du?' : lang === 'nl' ? 'Waar wil je op ontdekking?' : 'Where would you like to explore?'}</h2>
         <p>{lang === 'cs' ? 'Vyber zemi a potom můžeš výběr upřesnit podle regionu a okresu.' : lang === 'de' ? 'Wähle ein Land und grenze die Auswahl nach Region und Landkreis ein.' : lang === 'nl' ? 'Kies een land en verfijn je selectie daarna op regio en district.' : 'Choose a country, then narrow your selection by region and district.'}</p>
-        {areaCatalogLoading ? <div className="area-picker-status"><LoaderCircle className="spin" size={18}/>{lang === 'cs' ? 'Načítám dostupné oblasti…' : lang === 'nl' ? 'Beschikbare gebieden laden…' : 'Loading available areas…'}</div> : areaCatalogError ? <div className="area-picker-error">{areaCatalogError}</div> : areaCountries.length === 0 ? <div className="area-picker-status">{lang === 'cs' ? 'Zatím nejsou dostupné žádné publikované oblasti.' : lang === 'nl' ? 'Er zijn nog geen gepubliceerde gebieden beschikbaar.' : 'No published areas are available yet.'}</div> : <>
-          <label className="area-picker-field"><span>{lang === 'cs' ? 'ZEMĚ' : lang === 'de' ? 'LAND' : lang === 'nl' ? 'LAND' : 'COUNTRY'}</span><select value={areaCountry} onChange={event => { setAreaCountry(event.target.value); setAreaState(''); setAreaCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code === 'SK' ? u.slovakia : code === 'IT' ? 'ITALY' : code}</option>)}</select></label>
+        {areaCatalogLoading ? <div className="area-picker-status"><LoaderCircle className="spin" size={18}/>{lang === 'cs' ? 'Načítám dostupné oblasti…' : lang === 'de' ? 'Verfügbare Gebiete werden geladen…' : lang === 'nl' ? 'Beschikbare gebieden laden…' : 'Loading available areas…'}</div> : areaCatalogError ? <div className="area-picker-error">{areaCatalogError}</div> : areaCountries.length === 0 ? <div className="area-picker-status">{lang === 'cs' ? 'Zatím nejsou dostupné žádné publikované oblasti.' : lang === 'de' ? 'Derzeit sind keine veröffentlichten Gebiete verfügbar.' : lang === 'nl' ? 'Er zijn nog geen gepubliceerde gebieden beschikbaar.' : 'No published areas are available yet.'}</div> : <>
+          <label className="area-picker-field"><span>{lang === 'cs' ? 'ZEMĚ' : lang === 'de' ? 'LAND' : lang === 'nl' ? 'LAND' : 'COUNTRY'}</span><select value={areaCountry} onChange={event => { setAreaCountry(event.target.value); setAreaState(''); setAreaCounty('') }}>{areaCountries.map(code => <option key={code} value={code}>{code === 'DE' ? u.germany : code === 'CZ' ? u.czechia : code === 'SK' ? u.slovakia : code === 'IT' ? (lang === 'de' ? 'ITALIEN' : lang === 'cs' ? 'ITÁLIE' : lang === 'nl' ? 'ITALIË' : lang === 'fr' ? 'ITALIE' : lang === 'es' ? 'ITALIA' : lang === 'it' ? 'ITALIA' : 'ITALY') : code}</option>)}</select></label>
           <div className="area-picker-row">
             <label className="area-picker-field"><span>{areaCountry === 'DE' ? u.bundesland : u.region}</span><select value={areaState} onChange={event => { setAreaState(event.target.value); setAreaCounty('') }}><option value="">{areaCountry === 'DE' ? u.allStates : u.allRegions}</option>{areaStates.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
             <label className="area-picker-field"><span>{areaCountry === 'CZ' ? u.district : u.county}</span><select value={areaCounty} onChange={event => setAreaCounty(event.target.value)}><option value="">{u.allCounties}</option>{areaCounties.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
           </div>
-          <div className="area-picker-footer"><span>{areaCatalog.filter(row => row.country_code === areaCountry && (!areaState || row.region === areaState) && (!areaCounty || row.county === areaCounty)).length.toLocaleString()} {lang === 'cs' ? 'dostupných oblastí' : lang === 'nl' ? 'beschikbare gebieden' : 'available areas'}</span><button onClick={confirmAreaPicker}>{lang === 'cs' ? 'Zobrazit na mapě' : lang === 'de' ? 'Auf der Karte anzeigen' : lang === 'nl' ? 'Toon op de kaart' : 'Explore this area'} <ArrowUpRight size={16}/></button></div>
+          <div className="area-picker-footer"><span>{areaCatalog.filter(row => row.country_code === areaCountry && (!areaState || row.region === areaState) && (!areaCounty || row.county === areaCounty)).length.toLocaleString()} {lang === 'cs' ? 'dostupných oblastí' : lang === 'de' ? 'verfügbare Gebiete' : lang === 'nl' ? 'beschikbare gebieden' : 'available areas'}</span><button onClick={confirmAreaPicker}>{lang === 'cs' ? 'Zobrazit na mapě' : lang === 'de' ? 'Auf der Karte anzeigen' : lang === 'nl' ? 'Toon op de kaart' : 'Explore this area'} <ArrowUpRight size={16}/></button></div>
         </>}
       </section>
     </div>}
