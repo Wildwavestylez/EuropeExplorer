@@ -9,6 +9,17 @@ function numberParam(params, key, min, max, integer = false) {
   return value
 }
 
+function snapBounds(south, west, north, east, step = 0.05) {
+  // Expand to stable geographic cells so nearby visitors share the same edge cache.
+  const floorTo = value => Math.floor(value / step) * step
+  const ceilTo = value => Math.ceil(value / step) * step
+  return {
+    south: Math.max(-90, Number(floorTo(south).toFixed(2))),
+    west: Math.max(-180, Number(floorTo(west).toFixed(2))),
+    north: Math.min(90, Number(ceilTo(north).toFixed(2))),
+    east: Math.min(180, Number(ceilTo(east).toFixed(2))),
+  }
+}
 function cellSizeForZoom(zoom) {
   if (zoom <= 7) return 0.35
   if (zoom <= 9) return 0.12
@@ -33,6 +44,32 @@ export async function onRequestGet(context) {
       return json({ error: 'Invalid viewport bounds, zoom or offset.' }, 400)
     }
 
+    const stableBounds = snapBounds(south, west, north, east)
+    const queryBounds = { south: stableBounds.south, west: stableBounds.west, north: stableBounds.north, east: stableBounds.east }
+    const cacheUrl = new URL('https://europe-explorer-cache.invalid/api/viewport')
+    cacheUrl.searchParams.set('country', country)
+    cacheUrl.searchParams.set('south', String(queryBounds.south))
+    cacheUrl.searchParams.set('west', String(queryBounds.west))
+    cacheUrl.searchParams.set('north', String(queryBounds.north))
+    cacheUrl.searchParams.set('east', String(queryBounds.east))
+    cacheUrl.searchParams.set('offset', String(offset))
+    cacheUrl.searchParams.set('zoom', String(zoom))
+    const cacheRequest = new Request(cacheUrl.toString(), { method: 'GET' })
+    const edgeCache = typeof caches !== 'undefined' ? caches.default : null
+
+    if (edgeCache) {
+      try {
+        const cached = await edgeCache.match(cacheRequest)
+        if (cached) {
+          const headers = new Headers(cached.headers)
+          headers.set('x-ee-cache', 'HIT')
+          return new Response(cached.body, { status: cached.status, headers })
+        }
+      } catch (cacheError) {
+        console.warn('[Europe Explorer] viewport cache read failed:', cacheError?.message || cacheError)
+      }
+    }
+
     const cellSize = cellSizeForZoom(zoom)
     const aggregate = cellSize > 0
     const sql = getSql(context)
@@ -54,8 +91,8 @@ export async function onRequestGet(context) {
         WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(f->'location')='object'
           AND (f->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
           AND (f->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (f->'location'->>'lat')::double precision BETWEEN ${south} AND ${north}
-          AND (f->'location'->>'lon')::double precision BETWEEN ${west} AND ${east}
+          AND (f->'location'->>'lat')::double precision BETWEEN ${queryBounds.south} AND ${queryBounds.north}
+          AND (f->'location'->>'lon')::double precision BETWEEN ${queryBounds.west} AND ${queryBounds.east}
       ), bucketed AS (
         SELECT *, CASE WHEN ${cellSize} > 0
           THEN floor(lat / ${cellSize})::text || ':' || floor(lon / ${cellSize})::text
@@ -81,8 +118,8 @@ export async function onRequestGet(context) {
           AND jsonb_typeof(f->'location')='object'
           AND (f->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
           AND (f->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (f->'location'->>'lat')::double precision BETWEEN ${south} AND ${north}
-          AND (f->'location'->>'lon')::double precision BETWEEN ${west} AND ${east}
+          AND (f->'location'->>'lat')::double precision BETWEEN ${queryBounds.south} AND ${queryBounds.north}
+          AND (f->'location'->>'lon')::double precision BETWEEN ${queryBounds.west} AND ${queryBounds.east}
       ), bucketed AS (
         SELECT *, CASE WHEN ${cellSize} > 0
           THEN floor(lat / ${cellSize})::text || ':' || floor(lon / ${cellSize})::text
@@ -108,8 +145,8 @@ export async function onRequestGet(context) {
           AND jsonb_typeof(f->'location')='object'
           AND (f->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$'
           AND (f->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
-          AND (f->'location'->>'lat')::double precision BETWEEN ${south} AND ${north}
-          AND (f->'location'->>'lon')::double precision BETWEEN ${west} AND ${east}
+          AND (f->'location'->>'lat')::double precision BETWEEN ${queryBounds.south} AND ${queryBounds.north}
+          AND (f->'location'->>'lon')::double precision BETWEEN ${queryBounds.west} AND ${queryBounds.east}
       ), bucketed AS (
         SELECT *, CASE WHEN ${cellSize} > 0
           THEN floor(lat / ${cellSize})::text || ':' || floor(lon / ${cellSize})::text
@@ -133,12 +170,24 @@ export async function onRequestGet(context) {
       country_code: country,
       is_cluster: aggregate,
     }))
-    return json({
+    const response = json({
       country, points, offset, pageSize: limit,
       hasMore: rows.length === limit,
       aggregation: aggregate ? 'grid' : 'individual',
       cellSize: aggregate ? cellSize : null,
     })
+    const responseHeaders = new Headers(response.headers)
+    responseHeaders.set('cache-control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=600')
+    responseHeaders.set('x-ee-cache', 'MISS')
+    const cacheableResponse = new Response(response.body, { status: response.status, headers: responseHeaders })
+    if (edgeCache) {
+      try {
+        await edgeCache.put(cacheRequest, cacheableResponse.clone())
+      } catch (cacheError) {
+        console.warn('[Europe Explorer] viewport cache write failed:', cacheError?.message || cacheError)
+      }
+    }
+    return cacheableResponse
   } catch (error) {
     return errorResponse(error, context.request, 'viewport')
   }
