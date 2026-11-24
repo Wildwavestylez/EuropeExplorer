@@ -17,7 +17,15 @@ const COUNTRY_SOURCES = [
 
 const MAX_DETAIL_POINTS = 5000
 const MAX_CACHE_ENTRIES = 24
-const VIEWPORT_BUFFER_RATIO = 0.45
+const VIEWPORT_BUFFER_RATIO = 0.2
+const VIEWPORT_DEBOUNCE_MS = 300
+
+function getAggregationCellSize(zoom) {
+  if (zoom <= 7) return 0.35
+  if (zoom <= 9) return 0.12
+  if (zoom <= 11) return 0.04
+  return 0
+}
 
 function intersects(a, b) {
   return a.west <= b.east && a.east >= b.west && a.south <= b.north && a.north >= b.south
@@ -39,7 +47,7 @@ function normalizeRows(rows, country) {
   })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
 }
 
-async function queryCountry(source, bounds) {
+async function queryCountry(source, bounds, zoom, signal) {
   const allRows = []
   const pageSize = 1000
   let offset = 0
@@ -101,7 +109,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
   const cacheRef = useRef(new Map())
   const loadedBoundsRef = useRef(null)
   const loadedSourcesRef = useRef('')
-  const requestIdRef = useRef(0)
+  const requestIdRef = useRef(0)\n  const abortRef = useRef(null)
   const timerRef = useRef(null)
   const layerRef = useRef(null)
   const markerByKeyRef = useRef(new Map())
@@ -204,7 +212,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     const results = await Promise.all(sources.map(async source => {
       const startedAt = performance.now()
       try {
-        const points = await queryCountry(source, queryBounds)
+        const points = await queryCountry(source, queryBounds, zoom, controller.signal)
         timingCallbackRef.current?.({
           source: source.label,
           milliseconds: Math.round((performance.now() - startedAt) * 10) / 10,
