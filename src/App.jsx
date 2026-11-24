@@ -256,6 +256,7 @@ export default function App() {
   const confirmAreaPicker = () => {
     if (!areaCountry) return
     selectionRequestRef.current += 1
+    selectionRequestRef.current += 1
 
     // Use only the postal areas already present in the published Explorer data.
     // The map will fit the representative points after the selected country's
@@ -277,76 +278,33 @@ export default function App() {
 
   const handlePlaceSelect = useCallback(async (place) => {
     const requestId = ++selectionRequestRef.current
-    if (place.country_code === 'CZ') {
-      try { const content=await getCzechRecord(place.postal_code); if (requestId !== selectionRequestRef.current) return; setSelected({...place,content}); setRandomFocusPoint(null); setSelectedFact(null) }
-      catch(error) { console.error('Could not load Czech postal-area details:',error) }
-      return
+    try {
+      const content = await getPublishedRecord(place.country_code, place.postal_code)
+      if (requestId !== selectionRequestRef.current) return
+      setSelected({ ...place, content })
+      setRandomFocusPoint(null)
+      setSelectedFact(null)
+      setFactSheetOpen(false)
+    } catch (error) {
+      if (requestId === selectionRequestRef.current) console.error('Could not load postal-area details:', error)
     }
-    if (place.country_code === 'IT') {
-      try {
-        const content = await getItalyRecord(place.postal_code)
-        if (requestId !== selectionRequestRef.current) return
-        setSelected({ ...place, content })
-        setRandomFocusPoint(null)
-        setSelectedFact(null)
-      } catch (error) { console.error('Could not load Italian CAP details:', error) }
-      return
-    }
-    if (place.country_code === 'SK') {
-      try {
-        const content = await getSlovakiaRecord(place.postal_code)
-        if (requestId !== selectionRequestRef.current) return
-        setSelected({ ...place, content })
-        setRandomFocusPoint(null)
-        setSelectedFact(null)
-      } catch (error) { console.error('Could not load Slovak postal-area details:', error) }
-      return
-    }
-    console.warn('This postal area is not yet published in Neon:', place)
-
   }, [])
 
   const handleFactSelect = useCallback(async (place, fact) => {
     const requestId = ++selectionRequestRef.current
-    if (place.country_code === 'CZ') {
-      try {
-        const content=await getCzechRecord(place.postal_code)
-        if (requestId !== selectionRequestRef.current) return
-        const canonicalFact=(content.facts||[]).find(item=>String(item.id)===String(fact.id))
-        if(!canonicalFact) throw new Error('Selected fact is not present in the published Czech V5 record.')
-        setSelected({...place,content}); setRandomFocusPoint(null); setSelectedFact(canonicalFact); setFactSheetExpanded(false); setFactSheetOpen(true)
-      } catch(error) { console.error('Could not load Czech fact details:',error) }
-      return
+    try {
+      const content = await getPublishedRecord(place.country_code, place.postal_code)
+      if (requestId !== selectionRequestRef.current) return
+      const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
+      if (!canonicalFact) throw new Error('Selected fact is not present in the published record.')
+      setSelected({ ...place, content })
+      setRandomFocusPoint(null)
+      setSelectedFact(canonicalFact)
+      setFactSheetExpanded(false)
+      setFactSheetOpen(true)
+    } catch (error) {
+      if (requestId === selectionRequestRef.current) console.error('Could not load selected fact details:', error)
     }
-    if (place.country_code === 'IT') {
-      try {
-        const content = await getItalyRecord(place.postal_code)
-        if (requestId !== selectionRequestRef.current) return
-        const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
-        if (!canonicalFact) throw new Error('Selected fact is not present in the published Italian CAP record.')
-        setSelected({ ...place, content })
-        setRandomFocusPoint(null)
-        setSelectedFact(canonicalFact)
-        setFactSheetExpanded(false)
-        setFactSheetOpen(true)
-      } catch (error) { console.error('Could not load Italian fact details:', error) }
-      return
-    }
-    if (place.country_code === 'SK') {
-      try {
-        const content = await getSlovakiaRecord(place.postal_code)
-        if (requestId !== selectionRequestRef.current) return
-        const canonicalFact = (content.facts || []).find(item => String(item.id) === String(fact.id))
-        if (!canonicalFact) throw new Error('Selected fact is not present in the published Slovak record.')
-        setSelected({ ...place, content })
-        setRandomFocusPoint(null)
-        setSelectedFact(canonicalFact)
-        setFactSheetExpanded(false)
-        setFactSheetOpen(true)
-      } catch (error) { console.error('Could not load Slovak fact details:', error) }
-      return
-    }
-    console.warn('This fact source is not yet published in Neon:', place, fact)
   }, [])
 
   useEffect(() => {
@@ -436,10 +394,11 @@ export default function App() {
     if (!navigator.geolocation) { setIntroMessage(lang === 'cs' ? 'Toto zařízení nepodporuje polohu.' : lang === 'de' ? 'Dieses Gerät unterstützt keine Standortbestimmung.' : lang === 'nl' ? 'Dit apparaat ondersteunt geen locatiebepaling.' : 'Location is not available on this device.'); return }
     setIntroMessage(lang === 'cs' ? 'Čekám na povolení polohy…' : lang === 'de' ? 'Warte auf die Standortfreigabe…' : lang === 'nl' ? 'Wachten op toestemming voor je locatie…' : 'Waiting for location permission…')
     navigator.geolocation.getCurrentPosition(position => {
+      if (requestId !== selectionRequestRef.current) return
       setMapStart([position.coords.latitude, position.coords.longitude])
       setSelected(null); setSelectedFact(null); setActiveMode('location')
       setIntroMessage('')
-    }, () => setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : lang === 'de' ? 'Dein Standort konnte nicht ermittelt werden. Überprüfe die Standortberechtigung.' : lang === 'nl' ? 'Je locatie kon niet worden bepaald. Controleer de locatietoestemming.' : 'Could not get your location. Check GPS permissions.'), { enableHighAccuracy: true, timeout: 12000 })
+    }, () => { if (requestId === selectionRequestRef.current) setIntroMessage(lang === 'cs' ? 'Polohu se nepodařilo získat. Zkontroluj oprávnění GPS.' : lang === 'de' ? 'Dein Standort konnte nicht ermittelt werden. Überprüfe die Standortberechtigung.' : lang === 'nl' ? 'Je locatie kon niet worden bepaald. Controleer de locatietoestemming.' : 'Could not get your location. Check GPS permissions.') }, { enableHighAccuracy: true, timeout: 12000 })
   }
 
   const searchIntroPlace = async (event) => {
@@ -527,11 +486,13 @@ export default function App() {
 
   const startExplorer = async () => {
     const requestId = ++selectionRequestRef.current
+    const requestId = ++selectionRequestRef.current
     setIntroMessage(lang === 'cs' ? 'Hledám náhodný objev…' : lang === 'de' ? 'Zufällige Entdeckung wird gesucht…' : lang === 'nl' ? 'Een willekeurige ontdekking zoeken…' : 'Finding a random discovery…')
     try {
       // The API draws from the complete published V5 fact pool in Neon,
       // independently of the currently selected country or map filters.
       const discovery = await apiGet('/api/discover')
+      if (requestId !== selectionRequestRef.current) return
       if (requestId !== selectionRequestRef.current) return
       setSelected(discovery.place)
       setSelectedFact(discovery.fact)
