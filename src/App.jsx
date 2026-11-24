@@ -547,7 +547,12 @@ export default function App() {
 
   const localizedFacts = selected ? getLocalizedFacts(selected.content, lang) : []
   const facts = selectedFact
-    ? localizedFacts.filter(fact => fact.id === selectedFact.id)
+    ? localizedFacts.filter(fact => String(fact.id) === String(selectedFact.id))
+    : localizedFacts
+  // The selected discovery is already shown in the map sheet. Keep it out of
+  // the postal-area list so the same fact is never rendered twice.
+  const detailFacts = selectedFact
+    ? localizedFacts.filter(fact => String(fact.id) !== String(selectedFact.id))
     : localizedFacts
   const activeFact = facts[0] || null
   const center = selected && Number.isFinite(selected.latitude) && Number.isFinite(selected.longitude)
@@ -635,8 +640,10 @@ export default function App() {
         <aside className={`detail-panel ${selected ? "has-selection" : ""}`}>
           {selected ? <>
             <div className="detail-image"><div className="detail-image-grid" /><span className="image-tag">{selectedFact ? u.pinDiscovery : u.localDiscovery}</span><span className="image-coords">{(selectedFact?.location || selectedPoint)?.lat?.toFixed(3)}, {(selectedFact?.location || selectedPoint)?.lon?.toFixed(3)}</span></div>
-            <div className="detail-content"><div className="detail-kicker">{selectedFact ? u.pinDiscovery : u.postalArea} / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{facts.length.toString().padStart(2, '0')}</span></div>
-              {facts.length ? <div className="fact-list">{facts.map((f, i) => <article className="fact" key={f.id || i}><span className="fact-index">{String(i + 1).padStart(2, '0')}</span><div><h4>{f.title || f.name || u.discover}</h4><p>{f.text || f.description || ''}</p><span className="fact-category">{(mapCategoryCopy[lang]?.[f.map_category] || editorialCategoryCopy[lang]?.[f.category] || f.category || 'Discovery').toUpperCase()}</span></div></article>)}</div> : <p className="detail-location">{u.noHighlights}</p>}
+            <div className="detail-content"><div className="detail-kicker">{selectedFact ? u.pinDiscovery : u.postalArea} / {selected.postal_code}</div><h3>{selected.city || selected.postal_code}</h3><p className="detail-location">{[selected.municipality, selected.district, selected.region].filter(Boolean).join(', ')}</p><div className="detail-divider" /><div className="detail-subhead">{t.details}<span>{detailFacts.length.toString().padStart(2, '0')}</span></div>
+              {detailFacts.length ? <div className="fact-list">{detailFacts.map((f, i) => <article className="fact" key={f.id || i}><span className="fact-index">{String(i + 1).padStart(2, '0')}</span><div><h4>{f.title || f.name || u.discover}</h4><p>{f.text || f.description || ''}</p><span className="fact-category">{(mapCategoryCopy[lang]?.[f.map_category] || editorialCategoryCopy[lang]?.[f.category] || f.category || 'Discovery').toUpperCase()}</span></div></article>)}</div> : <p className="detail-location">{selectedFact
+                ? (lang === 'cs' ? 'Vybraná zajímavost je zobrazena v panelu nad mapou.' : lang === 'de' ? 'Die ausgewählte Entdeckung wird im Fenster über der Karte angezeigt.' : lang === 'nl' ? 'De geselecteerde ontdekking wordt weergegeven in het venster boven de kaart.' : 'The selected discovery is shown in the panel above the map.')
+                : u.noHighlights}</p>}
             </div><button className="close-detail" onClick={() => { setSelected(null); setSelectedFact(null) }} aria-label={u.closeDetails}><X size={16} /></button>
           </> : <div className="empty-detail"><div className="empty-icon"><MapPin size={26} /></div><span>{u.next}</span><h3>{t.choose}</h3><p>{t.note}</p></div>}
         </aside>
