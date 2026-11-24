@@ -16,12 +16,12 @@ export async function onRequestGet(context) {
     const sql=getSql(context), limit=1000
     let rows
     if (country==='CZ') rows=await sql`
-      SELECT r.postcode,c->>'city' AS city,f->>'id' AS fact_id,f->>'title' AS title,
+      SELECT r.postcode,content.c->>'city' AS city,f->>'id' AS fact_id,f->>'title' AS title,
       f->>'category' AS category,f->>'map_category' AS map_category,
       (f->'location'->>'lat')::double precision AS lat,(f->'location'->>'lon')::double precision AS lon
       FROM public.czechia_cap_records r
       CROSS JOIN LATERAL (SELECT COALESCE(r.record->'content',r.record) AS c) content
-      CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(c->'facts')='array' THEN c->'facts' ELSE '[]'::jsonb END) facts(f)
+      CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(content.c->'facts')='array' THEN content.c->'facts' ELSE '[]'::jsonb END) facts(f)
       WHERE r.workflow_status='published' AND r.content_version=5 AND jsonb_typeof(f->'location')='object'
       AND (f->'location'->>'lat') ~ '^-?[0-9]+([.][0-9]+)?$' AND (f->'location'->>'lon') ~ '^-?[0-9]+([.][0-9]+)?$'
       AND (f->'location'->>'lat')::double precision BETWEEN ${south} AND ${north}
