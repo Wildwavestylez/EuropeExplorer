@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
-import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter, Coffee } from 'lucide-react'
+import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter, Coffee, Bug, Send } from 'lucide-react'
 import ViewportFactLayer from './components/ViewportFactLayer'
 
 
@@ -97,6 +97,16 @@ const mapCategoryCopy = {
   fr: { castle:'Château', cultural_site:'Lieu culturel', historical_monument:'Monument historique', nature:'Nature', viewpoint_landscape:'Belvédère / paysage', historic_city:'Ville historique', museum:'Musée', religious_site:'Site religieux', technical_heritage:'Patrimoine technique', personality:'Personnalité', architecture:'Architecture', archaeological_site:'Site archéologique', park_garden:'Parc / jardin', visitor_attraction:'Attraction touristique', local_culture:'Culture locale', science_site:'Site scientifique', sports_venue:'Équipement sportif' },
   it: { castle:'Castello', cultural_site:'Luogo culturale', historical_monument:'Monumento storico', nature:'Natura', viewpoint_landscape:'Belvedere / paesaggio', historic_city:'Città storica', museum:'Museo', religious_site:'Luogo religioso', technical_heritage:'Patrimonio tecnico', personality:'Personalità', architecture:'Architettura', archaeological_site:'Sito archeologico', park_garden:'Parco / giardino', visitor_attraction:'Attrazione turistica', local_culture:'Cultura locale', science_site:'Luogo scientifico', sports_venue:'Impianto sportivo' },
   nl: { castle:'Kasteel', religious_site:'Religieuze locatie', historical_monument:'Historisch monument', architecture:'Architectuur', historic_city:'Historische stad', museum:'Museum', archaeological_site:'Archeologische vindplaats', nature:'Natuur', viewpoint_landscape:'Uitzichtpunt / landschap', park_garden:'Park / tuin', technical_heritage:'Technisch erfgoed', cultural_site:'Culturele locatie', visitor_attraction:'Bezienswaardigheid', local_culture:'Lokale cultuur', science_site:'Wetenschappelijke locatie', personality:'Persoonlijkheid', sports_venue:'Sportlocatie' },
+}
+
+const reportCopy = {
+en:{button:'Report a problem',title:'Help us improve Europe Explorer',intro:'Tell us what went wrong or what could work better. You can send the report anonymously.',category:'What is the issue about?',message:'Describe the problem',messageHint:'What happened? What did you expect?',email:'Email (optional)',emailHint:'Only if you want a reply',send:'Send report',sending:'Sending…',cancel:'Cancel',success:'Thank you! Your report has been saved.',error:'Could not send the report. Please try again later.',categories:{bug:'Something is broken',map:'Map or navigation',data:'Incorrect information',translation:'Translation or language',idea:'Suggestion',other:'Other'}},
+de:{button:'Problem melden',title:'Hilf uns, Europe Explorer zu verbessern',intro:'Beschreibe, was nicht funktioniert oder besser sein könnte. Du kannst den Hinweis anonym senden.',category:'Worum geht es?',message:'Problembeschreibung',messageHint:'Was ist passiert und was hast du erwartet?',email:'E-Mail (optional)',emailHint:'Nur wenn du eine Antwort möchtest',send:'Meldung senden',sending:'Wird gesendet…',cancel:'Abbrechen',success:'Vielen Dank! Deine Meldung wurde gespeichert.',error:'Die Meldung konnte nicht gesendet werden. Bitte versuche es später erneut.',categories:{bug:'Etwas funktioniert nicht',map:'Karte oder Navigation',data:'Falsche Informationen',translation:'Übersetzung oder Sprache',idea:'Vorschlag',other:'Sonstiges'}},
+cs:{button:'Nahlásit problém',title:'Pomoz nám vylepšit Europe Explorer',intro:'Napiš nám, co nefunguje nebo co by mohlo být lepší. Hlášení můžeš poslat anonymně.',category:'Čeho se problém týká?',message:'Popis problému',messageHint:'Co se stalo a co jsi očekával/a?',email:'E-mail (nepovinný)',emailHint:'Jen pokud chceš odpověď',send:'Odeslat hlášení',sending:'Odesílám…',cancel:'Zrušit',success:'Děkujeme! Hlášení jsme uložili.',error:'Hlášení se nepodařilo odeslat. Zkus to prosím později.',categories:{bug:'Něco nefunguje',map:'Mapa nebo navigace',data:'Nesprávné informace',translation:'Překlad nebo jazyk',idea:'Nápad nebo návrh',other:'Jiné'}},
+es:{button:'Informar de un problema',title:'Ayúdanos a mejorar Europe Explorer',intro:'Cuéntanos qué no funciona o qué se podría mejorar. Puedes enviar el aviso de forma anónima.',category:'¿De qué trata el problema?',message:'Describe el problema',messageHint:'¿Qué ha ocurrido y qué esperabas?',email:'Correo electrónico (opcional)',emailHint:'Solo si deseas una respuesta',send:'Enviar informe',sending:'Enviando…',cancel:'Cancelar',success:'¡Gracias! Hemos guardado tu informe.',error:'No se pudo enviar el informe. Inténtalo más tarde.',categories:{bug:'Algo no funciona',map:'Mapa o navegación',data:'Información incorrecta',translation:'Traducción o idioma',idea:'Sugerencia',other:'Otro'}},
+fr:{button:'Signaler un problème',title:'Aidez-nous à améliorer Europe Explorer',intro:'Dites-nous ce qui ne fonctionne pas ou ce qui pourrait être amélioré. Le signalement peut être anonyme.',category:'Quel est le problème ?',message:'Décrivez le problème',messageHint:'Que s’est-il passé et à quoi vous attendiez-vous ?',email:'E-mail (facultatif)',emailHint:'Uniquement si vous souhaitez une réponse',send:'Envoyer',sending:'Envoi…',cancel:'Annuler',success:'Merci ! Votre signalement a été enregistré.',error:'Le signalement n’a pas pu être envoyé. Réessayez plus tard.',categories:{bug:'Quelque chose ne fonctionne pas',map:'Carte ou navigation',data:'Information incorrecte',translation:'Traduction ou langue',idea:'Suggestion',other:'Autre'}},
+it:{button:'Segnala un problema',title:'Aiutaci a migliorare Europe Explorer',intro:'Raccontaci cosa non funziona o cosa si potrebbe migliorare. Puoi inviare la segnalazione in forma anonima.',category:'Di cosa si tratta?',message:'Descrivi il problema',messageHint:'Che cosa è successo e cosa ti aspettavi?',email:'E-mail (facoltativa)',emailHint:'Solo se desideri una risposta',send:'Invia segnalazione',sending:'Invio…',cancel:'Annulla',success:'Grazie! La segnalazione è stata salvata.',error:'Impossibile inviare la segnalazione. Riprova più tardi.',categories:{bug:'Qualcosa non funziona',map:'Mappa o navigazione',data:'Informazioni errate',translation:'Traduzione o lingua',idea:'Suggerimento',other:'Altro'}},
+nl:{button:'Probleem melden',title:'Help ons Europe Explorer te verbeteren',intro:'Vertel ons wat niet werkt of beter kan. Je kunt de melding anoniem versturen.',category:'Waar gaat het probleem over?',message:'Beschrijf het probleem',messageHint:'Wat is er gebeurd en wat had je verwacht?',email:'E-mail (optioneel)',emailHint:'Alleen als je een antwoord wilt',send:'Melding versturen',sending:'Verzenden…',cancel:'Annuleren',success:'Bedankt! Je melding is opgeslagen.',error:'De melding kon niet worden verzonden. Probeer het later opnieuw.',categories:{bug:'Er werkt iets niet',map:'Kaart of navigatie',data:'Onjuiste informatie',translation:'Vertaling of taal',idea:'Suggestie',other:'Anders'}}
 }
 
 const editorialCategoryCopy = {
@@ -228,6 +238,15 @@ export default function App() {
   const [areaMapPoints, setAreaMapPoints] = useState([])
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportCategory, setReportCategory] = useState('bug')
+  const [reportMessage, setReportMessage] = useState('')
+  const [reportEmail, setReportEmail] = useState('')
+  const [reportSending, setReportSending] = useState(false)
+  const [reportResult, setReportResult] = useState('')
+  const [reportError, setReportError] = useState('')
+  const [reportStartedAt, setReportStartedAt] = useState(0)
+  const [reportWebsite, setReportWebsite] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [placesOpen, setPlacesOpen] = useState(false)
@@ -238,6 +257,30 @@ export default function App() {
   useEffect(() => {
     try { window.localStorage.setItem('europe-explorer-language', lang) } catch {}
   }, [lang])
+
+  const openReport = () => {
+    setReportCategory('bug'); setReportMessage(''); setReportEmail('')
+    setReportResult(''); setReportError(''); setReportWebsite('')
+    setReportStartedAt(Date.now()); setReportOpen(true); setMenuOpen(false)
+  }
+  const submitReport = async (event) => {
+    event.preventDefault(); setReportSending(true); setReportError('')
+    try {
+      const focus = selectedFact?.location || selectedPoint || { lat: mapStart?.[0], lon: mapStart?.[1] }
+      const response = await fetch('/api/report', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({
+        category:reportCategory,message:reportMessage,email:reportEmail,language:lang,pageUrl:window.location.href,
+        countryCode:selected?.country_code || country,postalCode:selected?.postal_code || null,
+        lat:focus?.lat ?? focus?.[0] ?? null,lon:focus?.lon ?? focus?.[1] ?? null,
+        elapsedMs:Date.now()-reportStartedAt,website:reportWebsite,
+      })})
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Report submission failed.')
+      setReportResult((reportCopy[lang] || reportCopy.en).success); setReportMessage(''); setReportEmail('')
+    } catch (error) {
+      setReportError((reportCopy[lang] || reportCopy.en).error)
+      console.error('[Europe Explorer] report submission failed:',error)
+    } finally { setReportSending(false) }
+  }
 
   const t = copy[lang] || copy.en
   const u = uiCopy[lang] || uiCopy.en
@@ -609,6 +652,7 @@ export default function App() {
         <form className="welcome-option welcome-search" onSubmit={event => { setMenuOpen(false); searchIntroPlace(event) }}><span className="welcome-icon"><Search size={20}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'de' ? 'Ort suchen' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={event => setIntroSearch(event.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'de' ? 'Stadt, Ort oder Postleitzahl…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label={lang === 'de' ? 'Suchen' : lang === 'nl' ? 'Zoeken' : 'Search'}><ArrowUpRight size={17}/></button></form>
         <button className="welcome-option" onClick={() => { setMenuOpen(false); openAreaPicker() }}><span className="welcome-icon"><Globe2 size={20}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'de' ? 'Gebiet auswählen' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'de' ? 'Land, Region und Landkreis' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={17}/></button>
         <button className="welcome-option welcome-real" onClick={() => { setMenuOpen(false); startExplorer() }}><span className="welcome-icon"><Compass size={21}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'de' ? 'Lass dich von einer zufälligen Entdeckung überraschen' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={17}/></button>
+        <button className="report-menu-button" onClick={openReport}><Bug size={17}/><span>{(reportCopy[lang] || reportCopy.en).button}</span><ArrowUpRight size={16}/></button>
       </div>
     </div>}
 
@@ -722,6 +766,21 @@ export default function App() {
         </div>
       </details>
     </section>}
+    {reportOpen && <div className="report-backdrop" role="presentation" onMouseDown={event => { if(event.target===event.currentTarget && !reportSending) setReportOpen(false) }}>
+      <section className="report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-title">
+        <button type="button" className="report-close" onClick={() => setReportOpen(false)} aria-label={lang==='de'?'Schließen':lang==='cs'?'Zavřít':'Close'}><X size={19}/></button>
+        <div className="report-kicker"><Bug size={15}/> EUROPE EXPLORER</div>
+        <h2 id="report-title">{(reportCopy[lang]||reportCopy.en).title}</h2><p className="report-intro">{(reportCopy[lang]||reportCopy.en).intro}</p>
+        {reportResult ? <div className="report-success" role="status">{reportResult}<button type="button" onClick={()=>setReportOpen(false)}>OK</button></div> : <form className="report-form" onSubmit={submitReport}>
+          <label>{(reportCopy[lang]||reportCopy.en).category}<select value={reportCategory} onChange={e=>setReportCategory(e.target.value)}>{Object.entries((reportCopy[lang]||reportCopy.en).categories).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label>{(reportCopy[lang]||reportCopy.en).message}<textarea required minLength={10} maxLength={4000} rows={5} value={reportMessage} onChange={e=>setReportMessage(e.target.value)} placeholder={(reportCopy[lang]||reportCopy.en).messageHint}/></label>
+          <label>{(reportCopy[lang]||reportCopy.en).email}<input type="email" maxLength={254} value={reportEmail} onChange={e=>setReportEmail(e.target.value)} placeholder={(reportCopy[lang]||reportCopy.en).emailHint}/></label>
+          <label className="report-honeypot" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={reportWebsite} onChange={e=>setReportWebsite(e.target.value)}/></label>
+          {reportError && <p className="report-error" role="alert">{reportError}</p>}
+          <div className="report-actions"><button type="button" className="report-cancel" onClick={()=>setReportOpen(false)} disabled={reportSending}>{(reportCopy[lang]||reportCopy.en).cancel}</button><button type="submit" className="report-submit" disabled={reportSending||reportMessage.trim().length<10}><Send size={15}/>{reportSending?(reportCopy[lang]||reportCopy.en).sending:(reportCopy[lang]||reportCopy.en).send}</button></div>
+        </form>}
+      </section>
+    </div>}
     {activeMode && <section style={{ margin: '8px auto 16px', padding: '0 12px', maxWidth: '1200px', color: '#78716c', fontSize: '11px' }}>
       <details>
         <summary style={{ cursor: 'pointer', display: 'inline-block', textDecoration: 'underline', textUnderlineOffset: '3px', fontWeight: 400, fontSize: '11px' }}>Diagnostika načítání mapy</summary>
