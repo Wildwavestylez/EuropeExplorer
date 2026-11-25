@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
-import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter, Coffee, Bug, Send } from 'lucide-react'
+import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter, Coffee, Bug, Send, Info } from 'lucide-react'
 import ViewportFactLayer from './components/ViewportFactLayer'
 import AboutDialog from './components/AboutDialog'
 
