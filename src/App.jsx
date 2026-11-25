@@ -275,10 +275,16 @@ export default function App() {
         elapsedMs:Date.now()-reportStartedAt,website:reportWebsite,
       })})
       const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'Report submission failed.')
+      if (!response.ok) {
+        const diagnostic = payload.diagnostic
+        const details = diagnostic
+          ? `\\nDiagnostika: ${diagnostic.id} | fáze: ${diagnostic.stage} | chyba: ${diagnostic.errorName}${diagnostic.errorCode ? ` (${diagnostic.errorCode})` : ''}`
+          : ''
+        throw new Error(`${payload.error || 'Report submission failed.'}${details}`)
+      }
       setReportResult((reportCopy[lang] || reportCopy.en).success); setReportMessage('')
     } catch (error) {
-      setReportError((reportCopy[lang] || reportCopy.en).error)
+      setReportError(`${(reportCopy[lang] || reportCopy.en).error}\\n${error.message || error}`)
       console.error('[Europe Explorer] report submission failed:',error)
     } finally { setReportSending(false) }
   }
