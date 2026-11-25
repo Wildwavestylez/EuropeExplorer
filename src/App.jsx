@@ -153,6 +153,38 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
   return null
 }
 
+function OverviewZoomHint() {
+  const map = useMap()
+
+  useEffect(() => {
+    // Temporary overview hint: show one centered graphic while live POIs are disabled.
+    const overlay = document.createElement('div')
+    overlay.className = 'overview-zoom-hint'
+    overlay.setAttribute('aria-hidden', 'true')
+
+    const image = document.createElement('img')
+    image.src = '/images/map-layers/Zoom_in.png'
+    image.alt = ''
+    image.draggable = false
+    overlay.appendChild(image)
+    map.getContainer().appendChild(overlay)
+
+    const updateVisibility = () => {
+      overlay.classList.toggle('is-visible', Math.round(map.getZoom()) <= 11)
+    }
+
+    updateVisibility()
+    map.on('zoomend', updateVisibility)
+
+    return () => {
+      map.off('zoomend', updateVisibility)
+      overlay.remove()
+    }
+  }, [map])
+
+  return null
+}
+
 function getState(place) {
   return place.region || place.content?.state || ''
 }
@@ -616,6 +648,7 @@ export default function App() {
           <div className="map-topline"><span><span className="status-dot" /> {country === 'DE' ? u.germany : country === 'SK' ? u.slovakia : country === 'IT' ? (lang === 'de' ? 'ITALIEN' : lang === 'cs' ? 'ITÁLIE' : lang === 'nl' ? 'ITALIË' : lang === 'fr' ? 'ITALIE' : lang === 'es' ? 'ITALIA' : lang === 'it' ? 'ITALIA' : 'ITALY') : u.czechia} / {u.map}</span><span>{u.pins} · {filtered.length.toLocaleString()} {u.areas}</span></div>
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <OverviewZoomHint />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
             <ViewportFactLayer country={country} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
           </MapContainer>

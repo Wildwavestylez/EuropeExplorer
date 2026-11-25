@@ -394,3 +394,27 @@
   letter-spacing: 0.06em;
   text-align: center;
 }
+
+
+/* Temporary map guidance shown while the live POI layer is disabled (zoom 11 and below). */
+.overview-zoom-hint {
+  position: absolute;
+  z-index: 450;
+  top: 50%;
+  left: 50%;
+  width: min(38vw, 250px);
+  transform: translate(-50%, -50%);
+  display: none;
+  pointer-events: none;
+  user-select: none;
+}
+.overview-zoom-hint.is-visible { display: block; }
+.overview-zoom-hint img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.28));
+}
+@media (max-width: 700px) {
+  .overview-zoom-hint { width: min(54vw, 210px); }
+}
