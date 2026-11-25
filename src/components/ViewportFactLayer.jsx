@@ -360,8 +360,6 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 52,
-      // Zoom 12 shows counted clusters; zoom 13+ shows every place separately.
-      disableClusteringAtZoom: 13,
       // Keep clusters enabled at every zoom level. Coincident facts stay
       // visible as a counted cluster; spiderfy reveals them on click at max zoom.
     })
