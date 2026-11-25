@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Search, Compass, MapPin, Globe2, ArrowUpRight, X, LoaderCircle, SlidersHorizontal, Menu, List, Filter, Coffee, Bug, Send } from 'lucide-react'
 import ViewportFactLayer from './components/ViewportFactLayer'
+import AboutDialog from './components/AboutDialog'
 
 
 async function apiGet(path) {
@@ -238,6 +239,7 @@ export default function App() {
   const [areaMapPoints, setAreaMapPoints] = useState([])
   const [selectedState, setSelectedState] = useState('')
   const [selectedCounty, setSelectedCounty] = useState('')
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportCategory, setReportCategory] = useState('bug')
   const [reportMessage, setReportMessage] = useState('')
@@ -651,6 +653,7 @@ export default function App() {
         <form className="welcome-option welcome-search" onSubmit={event => { setMenuOpen(false); searchIntroPlace(event) }}><span className="welcome-icon"><Search size={20}/></span><span className="welcome-search-fields"><strong>{lang === 'cs' ? 'Vyhledat místo' : lang === 'de' ? 'Ort suchen' : lang === 'nl' ? 'Zoek een plaats' : 'Search for a place'}</strong><input value={introSearch} onChange={event => setIntroSearch(event.target.value)} placeholder={lang === 'cs' ? 'Město, obec nebo PSČ…' : lang === 'de' ? 'Stadt, Ort oder Postleitzahl…' : lang === 'nl' ? 'Stad, dorp of postcode…' : 'City, town or postal code…'} /></span><button type="submit" aria-label={lang === 'de' ? 'Suchen' : lang === 'nl' ? 'Zoeken' : 'Search'}><ArrowUpRight size={17}/></button></form>
         <button className="welcome-option" onClick={() => { setMenuOpen(false); openAreaPicker() }}><span className="welcome-icon"><Globe2 size={20}/></span><span><strong>{lang === 'cs' ? 'Vybrat oblast' : lang === 'de' ? 'Gebiet auswählen' : lang === 'nl' ? 'Kies een gebied' : 'Choose an area'}</strong><small>{lang === 'cs' ? 'Země, region a okres' : lang === 'de' ? 'Land, Region und Landkreis' : lang === 'nl' ? 'Land, regio en district' : 'Country, region and district'}</small></span><ArrowUpRight size={17}/></button>
         <button className="welcome-option welcome-real" onClick={() => { setMenuOpen(false); startExplorer() }}><span className="welcome-icon"><Compass size={21}/></span><span><strong>Real Explorer</strong><small>{lang === 'cs' ? 'Nech se překvapit náhodným objevem' : lang === 'de' ? 'Lass dich von einer zufälligen Entdeckung überraschen' : lang === 'nl' ? 'Laat je verrassen door een willekeurige ontdekking' : 'Let a random discovery surprise you'}</small></span><ArrowUpRight size={17}/></button>
+        <button className="welcome-option" onClick={() => { setAboutOpen(true); setMenuOpen(false) }}><span className="welcome-icon"><Info size={20}/></span><span><strong>{({cs:'O projektu',de:'Über das Projekt',en:'About',es:'Sobre el proyecto',fr:'À propos',it:'Il progetto',nl:'Over het project'})[lang] || 'About'}</strong><small>{({cs:'Příběh Europe Explorer',de:'Die Geschichte von Europe Explorer',en:'The story behind Europe Explorer',es:'La historia de Europe Explorer',fr:'L’histoire de Europe Explorer',it:'La storia di Europe Explorer',nl:'Het verhaal achter Europe Explorer'})[lang] || 'The story behind Europe Explorer'}</small></span><ArrowUpRight size={17}/></button>
         <button className="report-menu-button" onClick={openReport}><Bug size={17}/><span>{(reportCopy[lang] || reportCopy.en).button}</span><ArrowUpRight size={16}/></button>
       </div>
     </div>}
@@ -765,6 +768,7 @@ export default function App() {
         </div>
       </details>
     </section>}
+    {aboutOpen && <AboutDialog lang={lang} onClose={() => setAboutOpen(false)} />}
     {reportOpen && <div className="report-backdrop" role="presentation" onMouseDown={event => { if(event.target===event.currentTarget && !reportSending) setReportOpen(false) }}>
       <section className="report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-title">
         <button type="button" className="report-close" onClick={() => setReportOpen(false)} aria-label={lang==='de'?'Schließen':lang==='cs'?'Zavřít':'Close'}><X size={19}/></button>
