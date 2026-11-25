@@ -49,7 +49,6 @@ export async function onRequestPost(context) {
 
     const category = String(body.category || '')
     const message = String(body.message || '').trim()
-    const email = String(body.email || '').trim()
     const language = String(body.language || 'en')
     const pageUrl = String(body.pageUrl || '').slice(0, 2048)
     const userAgent = String(request.headers.get('User-Agent') || '').slice(0, 500)
@@ -60,9 +59,6 @@ export async function onRequestPost(context) {
 
     if (!CATEGORIES.has(category)) return response({ error: 'Please choose a report category.' }, 400)
     if (message.length < 10 || message.length > 4000) return response({ error: 'The description must contain 10 to 4,000 characters.' }, 400)
-    if (email.length > 254 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
-      return response({ error: 'Please enter a valid email address, or leave it empty.' }, 400)
-    }
     if (!LANGUAGES.has(language)) return response({ error: 'Unsupported language.' }, 400)
     if (lat !== null && (lat < -90 || lat > 90)) return response({ error: 'Invalid map latitude.' }, 400)
     if (lon !== null && (lon < -180 || lon > 180)) return response({ error: 'Invalid map longitude.' }, 400)
@@ -72,7 +68,7 @@ export async function onRequestPost(context) {
       INSERT INTO public.error_reports
         (category, message, contact_email, language, page_url, country_code, postal_code, map_lat, map_lon, user_agent)
       VALUES
-        (${category}, ${message}, ${email || null}, ${language}, ${pageUrl || null},
+        (${category}, ${message}, NULL, ${language}, ${pageUrl || null},
          ${countryCode}, ${postalCode}, ${lat}, ${lon}, ${userAgent})
       RETURNING id
     `
