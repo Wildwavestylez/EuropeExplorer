@@ -656,7 +656,7 @@ export default function App() {
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <OverviewZoomHint />
             <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
-            <ViewportFactLayer country={country} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
+            <ViewportFactLayer country={country} lang={lang} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
     {factSheetOpen && selectedFact && activeFact && <section className={`fact-screen-sheet ${factSheetExpanded ? 'is-expanded' : ''}`} role="dialog" aria-label={activeFact.title || activeFact.name || u.pinDiscovery}>
