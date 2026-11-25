@@ -1,0 +1,45 @@
+import { X, Info } from 'lucide-react'
+
+const copy = {
+  cs: {
+    title: 'O projektu Europe Explorer', lead: 'Evropa. Místo po místě.',
+    intro: 'Europe Explorer vznikl z jednoduché myšlenky: Evropa je plná zajímavých míst, příběhů a souvislostí, které stojí za to objevovat. Chtěl jsem vytvořit prostor, kde můžeš poznávat evropská města, regiony, památky, přírodu a místní zajímavosti – nejen známé turistické cíle, ale i místa, kolem kterých bychom jinak možná jen projeli.',
+    heading: 'Nezávislý projekt, který roste postupně',
+    story: 'Europe Explorer není projektem velké společnosti ani rozsáhlého týmu. Tvořím ho ve svém volném čase, mezi pracovními směnami a každodenními povinnostmi. Proto se rozvíjí postupně – nová místa, informace a funkce přibývají průběžně. Některé části se ještě zdokonalují, jiné teprve čekají na své zpracování. Není to uzavřený ani dokončený projekt. Je to dlouhodobá práce, která se bude dál vyvíjet spolu s novými nápady, zkušenostmi a objevy.',
+    thanks: 'Děkuji všem, kteří Europe Explorer navštěvují, posílají zpětnou vazbu, upozorňují na chyby nebo projekt dobrovolně podporují. Každá taková pomoc přispívá k jeho dalšímu rozvoji.',
+    close: 'Zavřít'
+  },
+  en: {
+    title: 'About Europe Explorer', lead: 'Europe. One place at a time.',
+    intro: 'Europe Explorer began with a simple idea: Europe is full of fascinating places, stories and connections waiting to be discovered. I wanted to create a space to explore European cities, regions, landmarks, nature and local highlights – not only famous destinations, but also places we might otherwise pass by.',
+    heading: 'An independent project, growing step by step',
+    story: 'Europe Explorer is not the work of a large company or a big team. I build it in my free time, between work shifts and everyday responsibilities. That means it grows step by step: new places, information and features are added along the way. Some parts are still being refined, while others are waiting to be developed. This is an ongoing project that will continue to evolve with new ideas, experience and discoveries.',
+    thanks: 'Thank you to everyone who visits Europe Explorer, shares feedback, reports issues or chooses to support the project. Every bit of help contributes to its continued development.',
+    close: 'Close'
+  }
+}
+const languageNames = {
+  de: ['Über Europe Explorer','Europa. Ort für Ort.','Europe Explorer entstand aus einer einfachen Idee: Europa ist voller interessanter Orte, Geschichten und Zusammenhänge, die es zu entdecken lohnt. Ich wollte einen Ort schaffen, an dem du europäische Städte, Regionen, Sehenswürdigkeiten, Natur und lokale Besonderheiten kennenlernen kannst – nicht nur bekannte Reiseziele, sondern auch Orte, an denen man sonst vielleicht einfach vorbeifahren würde.','Ein unabhängiges Projekt, das Schritt für Schritt wächst','Europe Explorer ist weder das Projekt eines großen Unternehmens noch eines großen Teams. Ich entwickle es in meiner Freizeit, zwischen Arbeitsschichten und alltäglichen Verpflichtungen. Deshalb wächst es Schritt für Schritt: Neue Orte, Informationen und Funktionen kommen nach und nach hinzu. Manche Bereiche werden noch verbessert, andere warten noch auf ihre Ausarbeitung. Es ist ein langfristiges Projekt, das sich mit neuen Ideen, Erfahrungen und Entdeckungen weiterentwickelt.','Danke an alle, die Europe Explorer besuchen, Feedback geben, auf Fehler hinweisen oder das Projekt freiwillig unterstützen. Jede dieser Gesten hilft bei seiner Weiterentwicklung.','Schließen'],
+  es: ['Sobre Europe Explorer','Europa, lugar por lugar.','Europe Explorer nació de una idea sencilla: Europa está llena de lugares fascinantes, historias y conexiones por descubrir. Quería crear un espacio para explorar ciudades, regiones, monumentos, naturaleza y lugares de interés locales, no solo destinos famosos, sino también sitios por los que quizá pasaríamos de largo.','Un proyecto independiente que crece paso a paso','Europe Explorer no es el proyecto de una gran empresa ni de un equipo numeroso. Lo desarrollo en mi tiempo libre, entre turnos de trabajo y las responsabilidades cotidianas. Por eso crece paso a paso: se van añadiendo nuevos lugares, información y funciones. Algunas partes todavía se están perfeccionando y otras esperan su turno. Es un proyecto en evolución constante.','Gracias a quienes visitan Europe Explorer, comparten sus comentarios, señalan errores o deciden apoyar el proyecto. Cada gesto ayuda a que siga creciendo.','Cerrar'],
+  fr: ['À propos de Europe Explorer','L’Europe, lieu après lieu.','Europe Explorer est né d’une idée simple : l’Europe regorge de lieux fascinants, d’histoires et de liens qui méritent d’être découverts. Je voulais créer un espace pour explorer les villes, les régions, les monuments, la nature et les particularités locales – pas seulement les destinations célèbres, mais aussi les endroits que l’on pourrait autrement traverser sans s’arrêter.','Un projet indépendant qui grandit pas à pas','Europe Explorer n’est le projet ni d’une grande entreprise ni d’une vaste équipe. Je le développe pendant mon temps libre, entre mes horaires de travail et les obligations du quotidien. Il avance donc pas à pas : de nouveaux lieux, informations et fonctionnalités sont ajoutés progressivement. Certaines parties sont encore améliorées, d’autres attendent leur tour. C’est un projet en évolution.','Merci à toutes les personnes qui visitent Europe Explorer, partagent leurs retours, signalent des problèmes ou choisissent de soutenir le projet.','Fermer'],
+  it: ['Informazioni su Europe Explorer','Europa, un luogo alla volta.','Europe Explorer nasce da un’idea semplice: l’Europa è piena di luoghi affascinanti, storie e collegamenti da scoprire. Volevo creare uno spazio per esplorare città, regioni, monumenti, natura e curiosità locali, non solo destinazioni famose, ma anche luoghi che altrimenti potremmo attraversare senza fermarci.','Un progetto indipendente che cresce passo dopo passo','Europe Explorer non è il progetto di una grande azienda né di un grande team. Lo sviluppo nel tempo libero, tra i turni di lavoro e gli impegni quotidiani. Per questo cresce passo dopo passo: nuovi luoghi, informazioni e funzionalità vengono aggiunti gradualmente. Alcune parti sono ancora in fase di miglioramento, altre aspettano di essere sviluppate. È un progetto in continua evoluzione.','Grazie a chi visita Europe Explorer, condivide suggerimenti, segnala problemi o sceglie di sostenere il progetto. Ogni gesto contribuisce alla sua crescita.','Chiudi'],
+  nl: ['Over Europe Explorer','Europa, plek voor plek.','Europe Explorer begon met een eenvoudig idee: Europa zit vol bijzondere plekken, verhalen en verbanden die het ontdekken waard zijn. Ik wilde een plek creëren om Europese steden, regio’s, bezienswaardigheden, natuur en lokale bijzonderheden te verkennen – niet alleen bekende bestemmingen, maar ook plekken waar we anders misschien zomaar aan voorbij zouden gaan.','Een onafhankelijk project dat stap voor stap groeit','Europe Explorer is geen project van een groot bedrijf of een uitgebreid team. Ik bouw eraan in mijn vrije tijd, tussen werkdiensten en dagelijkse verplichtingen door. Daarom groeit het stap voor stap: nieuwe plekken, informatie en functies worden geleidelijk toegevoegd. Sommige onderdelen worden nog verbeterd, andere wachten nog op uitwerking. Het is een doorlopend project dat zich blijft ontwikkelen.','Bedankt aan iedereen die Europe Explorer bezoekt, feedback deelt, problemen meldt of het project vrijwillig steunt. Elke bijdrage helpt het project verder te ontwikkelen.','Sluiten']
+}
+export default function AboutDialog({ lang, onClose }) {
+  const base = copy[lang] || copy.en
+  const extra = languageNames[lang]
+  const t = extra ? { title:extra[0], lead:extra[1], intro:extra[2], heading:extra[3], story:extra[4], thanks:extra[5], close:extra[6] } : base
+  return <div className="report-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+    <section className="report-dialog" role="dialog" aria-modal="true" aria-labelledby="about-title" style={{maxWidth:'680px',maxHeight:'min(82vh,760px)',overflowY:'auto'}}>
+      <button type="button" className="report-close" onClick={onClose} aria-label={t.close}><X size={19}/></button>
+      <div className="report-kicker"><Info size={15}/> EUROPE EXPLORER</div>
+      <h2 id="about-title">{t.title}</h2>
+      <div style={{lineHeight:1.7,color:'var(--text-secondary, #57534e)'}}>
+        <h3>{t.lead}</h3><p>{t.intro}</p>
+        <h3>{t.heading}</h3><p>{t.story}</p>
+        <h3>{lang==='cs'?'Objevuj s námi':lang==='de'?'Entdecke mit uns':lang==='fr'?'Explorez avec nous':lang==='it'?'Scopri con noi':lang==='nl'?'Ontdek met ons':lang==='es'?'Descubre con nosotros':'Explore with us'}</h3><p>{t.thanks}</p>
+      </div>
+      <div className="report-actions"><button type="button" className="report-submit" onClick={onClose}>{t.close}</button></div>
+    </section>
+  </div>
+}
