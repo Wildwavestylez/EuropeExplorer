@@ -76,7 +76,16 @@ export async function onRequestPost(context) {
     `
     return response({ ok: true, reportId: rows[0].id }, 201)
   } catch (error) {
-    console.error('[Europe Explorer] report submission failed:', error?.message || error)
+    console.error(JSON.stringify({
+      service: 'europe-explorer-api',
+      operation: 'report-submit',
+      path: new URL(context.request.url).pathname,
+      errorName: error?.name || 'Error',
+      errorMessage: error?.message || String(error),
+      errorCode: error?.code || error?.cause?.code || null,
+      errorDetail: error?.detail || error?.cause?.message || null,
+      stack: error?.stack || null,
+    }))
     return response({ error: 'The report could not be saved right now. Please try again later.' }, 500)
   }
 }
