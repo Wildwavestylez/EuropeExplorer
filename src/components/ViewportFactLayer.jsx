@@ -48,6 +48,51 @@ function normalizeRows(rows, country) {
   })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
 }
 
+const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
+
+function waitBeforeRetry(signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Request aborted.', 'AbortError'))
+      return
+    }
+    const timer = window.setTimeout(resolve, 900)
+    signal?.addEventListener('abort', () => {
+      window.clearTimeout(timer)
+      reject(new DOMException('Request aborted.', 'AbortError'))
+    }, { once: true })
+  })
+}
+
+async function fetchJsonWithRetry(url, signal) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal })
+      const payload = await response.json()
+      if (response.ok) return payload
+
+      const error = new Error(payload.error || 'Viewport API request failed.')
+      error.status = response.status
+      if (attempt === 0 && RETRYABLE_HTTP_STATUSES.has(response.status)) {
+        console.warn('[Europe Explorer] temporary viewport error; retrying once:', response.status)
+        await waitBeforeRetry(signal)
+        continue
+      }
+      throw error
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error
+      const retryable = error?.status == null || RETRYABLE_HTTP_STATUSES.has(error.status)
+      if (attempt === 0 && retryable) {
+        console.warn('[Europe Explorer] viewport request failed; retrying once:', error?.message || error)
+        await waitBeforeRetry(signal)
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('Viewport API request failed after retry.')
+}
+
 async function queryCountry(source, bounds, zoom, signal) {
   const allRows = []
   const pageSize = 1000
@@ -61,9 +106,7 @@ async function queryCountry(source, bounds, zoom, signal) {
       offset: String(offset),
       zoom: String(zoom),
     })
-    const response = await fetch('/api/viewport?' + params.toString(), { signal })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || 'Viewport API request failed.')
+    const payload = await fetchJsonWithRetry('/api/viewport?' + params.toString(), signal)
     const rows = payload.points || []
     allRows.push(...rows.slice(0, maxPoints - allRows.length))
     if (!payload.hasMore || rows.length < pageSize) break
@@ -245,7 +288,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
           mode: getAggregationCellSize(zoom) ? 'database grid aggregation' : 'individual facts',
           limited: points.length >= MAX_DETAIL_POINTS,
         })
-        return points
+        return { points, failed: false }
       } catch (error) {
         if (error?.name !== 'AbortError') {
           timingCallbackRef.current?.({
@@ -256,20 +299,29 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
             status: 'error',
             error: String(error?.message || error),
           })
-          console.error('Europe Explorer ' + source.label + ' failed:', error)
+          console.error('Europe Explorer ' + source.label + ' failed after retry:', error)
         }
-        return []
+        return { points: [], failed: error?.name !== 'AbortError' }
       }
     }))
 
     if (requestId !== requestIdRef.current) return
-    const points = results.flat()
-    cacheRef.current.set(key, points)
-    loadedBoundsRef.current = queryBounds
-    loadedSourcesRef.current = sourceKey
-    loadedZoomRef.current = zoom
-    while (cacheRef.current.size > MAX_CACHE_ENTRIES) {
-      cacheRef.current.delete(cacheRef.current.keys().next().value)
+    const points = results.flatMap(result => result.points)
+    const hasFailedSource = results.some(result => result.failed)
+    // Never cache a partial/failed viewport as a successful empty result.
+    // A later map movement can therefore request the missing source again.
+    if (!hasFailedSource) {
+      cacheRef.current.set(key, points)
+      loadedBoundsRef.current = queryBounds
+      loadedSourcesRef.current = sourceKey
+      loadedZoomRef.current = zoom
+      while (cacheRef.current.size > MAX_CACHE_ENTRIES) {
+        cacheRef.current.delete(cacheRef.current.keys().next().value)
+      }
+    } else {
+      loadedBoundsRef.current = null
+      loadedSourcesRef.current = ''
+      loadedZoomRef.current = null
     }
     renderPoints(points, zoom)
     console.info('[Europe Explorer] exact viewport loaded', {
