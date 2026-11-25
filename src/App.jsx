@@ -47,15 +47,21 @@ const LANGS = [
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' }, { id: 'nl', label: 'NL' }, 
 ]
 
+function normalizeLanguageCode(languageCode) {
+  const code = String(languageCode || '').toLowerCase().split('-')[0]
+  // Slovak is not a separate UI language; use the complete Czech interface and content.
+  return code === 'sk' ? 'cs' : code
+}
+
 function getInitialLanguage() {
   const supported = LANGS.map(language => language.id)
   try {
-    const saved = window.localStorage.getItem('europe-explorer-language')
-    if (saved && supported.includes(saved)) return saved
+    const saved = normalizeLanguageCode(window.localStorage.getItem('europe-explorer-language'))
+    if (supported.includes(saved)) return saved
   } catch {}
   const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language]
   for (const browserLanguage of browserLanguages) {
-    const code = String(browserLanguage || '').toLowerCase().split('-')[0]
+    const code = normalizeLanguageCode(browserLanguage)
     if (supported.includes(code)) return code
   }
   return 'en'
