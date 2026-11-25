@@ -19,6 +19,7 @@ const MAX_DETAIL_POINTS = 5000
 const MAX_CACHE_ENTRIES = 24
 const VIEWPORT_BUFFER_RATIO = 0.2
 const VIEWPORT_DEBOUNCE_MS = 300
+const MIN_LIVE_POI_ZOOM = 12
 
 function getAggregationCellSize(zoom) {
   if (zoom <= 7) return 0.35
@@ -228,6 +229,21 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     // Leaflet can return fractional zoom values during touch gestures.
     // The viewport API intentionally accepts integer zoom levels only.
     const zoom = Math.round(map.getZoom())
+
+    // Overview zooms (11 and below) must never query the live POI database.
+    // Invalidate any older request so a late response cannot repopulate markers.
+    if (zoom < MIN_LIVE_POI_ZOOM) {
+      requestIdRef.current += 1
+      if (abortRef.current) abortRef.current.abort()
+      abortRef.current = null
+      layerRef.current?.clearLayers()
+      markerByKeyRef.current.clear()
+      loadedBoundsRef.current = null
+      loadedSourcesRef.current = ''
+      loadedZoomRef.current = null
+      return
+    }
+
     const bounds = {
       south: Math.max(-90, mapBounds.getSouth()),
       north: Math.min(90, mapBounds.getNorth()),
@@ -344,6 +360,8 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 52,
+      // Zoom 12 shows counted clusters; zoom 13+ shows every place separately.
+      disableClusteringAtZoom: 13,
       // Keep clusters enabled at every zoom level. Coincident facts stay
       // visible as a counted cluster; spiderfy reveals them on click at max zoom.
     })
