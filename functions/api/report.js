@@ -32,6 +32,7 @@ async function checkRateLimit(request) {
 }
 
 export async function onRequestPost(context) {
+  let stage = 'request-validation'
   try {
     const request = context.request
     const origin = request.headers.get('Origin')
@@ -44,10 +45,12 @@ export async function onRequestPost(context) {
     const contentLength = Number(request.headers.get('content-length') || 0)
     if (contentLength > 12000) return response({ error: 'Report is too large.' }, 413)
 
+    stage = 'read-request-body'
     const body = await request.json()
     // Quietly accept bot submissions that fill the hidden honeypot.
     if (String(body.website || '').trim()) return response({ ok: true })
     if (Number(body.elapsedMs) < 1500) return response({ error: 'Please take a moment to describe the issue.' }, 400)
+    stage = 'rate-limit-check'
     if (await checkRateLimit(request)) return response({ error: 'Please wait a minute before sending another report.' }, 429)
 
     const category = String(body.category || '')
@@ -65,6 +68,7 @@ export async function onRequestPost(context) {
     if (lat !== null && (lat < -90 || lat > 90)) return response({ error: 'Invalid map latitude.' }, 400)
     if (lon !== null && (lon < -180 || lon > 180)) return response({ error: 'Invalid map longitude.' }, 400)
 
+    stage = 'database-connection-and-insert'
     const sql = getSql(context)
     const rows = await sql`
       INSERT INTO public.error_reports
@@ -74,6 +78,7 @@ export async function onRequestPost(context) {
          ${countryCode}, ${postalCode}, ${lat}, ${lon})
       RETURNING id
     `
+    stage = 'database-insert-complete'
     return response({ ok: true, reportId: rows[0].id }, 201)
   } catch (error) {
     console.error(JSON.stringify({
@@ -84,8 +89,13 @@ export async function onRequestPost(context) {
       errorMessage: error?.message || String(error),
       errorCode: error?.code || error?.cause?.code || null,
       errorDetail: error?.detail || error?.cause?.message || null,
+      stage,
       stack: error?.stack || null,
     }))
-    return response({ error: 'The report could not be saved right now. Please try again later.' }, 500)
+    const diagnosticId = globalThis.crypto?.randomUUID?.() || String(Date.now())
+    return response({
+      error: 'The report could not be saved right now. Please try again later.',
+      diagnostic: { id: diagnosticId, stage, errorName: error?.name || 'Error', errorCode: error?.code || error?.cause?.code || null }
+    }, 500)
   }
 }
