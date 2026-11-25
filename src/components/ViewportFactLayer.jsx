@@ -136,11 +136,11 @@ const MAP_CATEGORY_ICONS = {
   sports_venue: '🏟️',
 }
 
-function makeMarker(point, zoom) {
+function makeMarker(point, zoom, lang) {
   if (point.is_cluster) {
     return L.marker([point.lat, point.lon], {
       icon: L.divIcon({ className: 'fact-cluster-icon', html: '<span class="fact-cluster-count">' + point.feature_count + '</span>', iconSize: [42, 42], iconAnchor: [21, 21] }),
-      title: point.feature_count + ' discoveries',
+      title: lang === 'de' ? point.feature_count + ' Entdeckungen' : point.feature_count + ' discoveries',
       riseOnHover: true,
       featureCount: point.feature_count,
     })
@@ -159,7 +159,7 @@ function makeMarker(point, zoom) {
   })
 }
 
-export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
+export default function ViewportFactLayer({ onSelectFact, onSourceTiming, lang = 'en' }) {
   const map = useMap()
   const cacheRef = useRef(new Map())
   const loadedBoundsRef = useRef(null)
@@ -198,7 +198,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming }) {
     const additions = []
     for (const [key, point] of desired) {
       if (markerByKeyRef.current.has(key)) continue
-      const marker = makeMarker(point, zoom)
+      const marker = makeMarker(point, zoom, lang)
       marker.on('click', () => {
         if (point.is_cluster) {
           map.setView([point.lat, point.lon], Math.min(map.getMaxZoom(), map.getZoom() + 2), { animate: true })
