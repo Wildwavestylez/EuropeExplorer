@@ -222,7 +222,7 @@ export default function ViewportFactLayer({ onSelectFact, onSourceTiming, lang =
     }
 
     if (additions.length) layer.addLayers(additions)
-  }, [map])
+  }, [map, lang])
 
   const loadViewport = useCallback(async () => {
     const mapBounds = map.getBounds()
