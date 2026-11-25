@@ -19,7 +19,10 @@ async function checkRateLimit(request) {
   if (!ip || !globalThis.caches?.default || !globalThis.crypto?.subtle) return false
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip))
   const key = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('')
-  const cacheKey = new Request('https://europe-explorer-rate-limit.invalid/error-report/' + key)
+  // Cache API keys must use this site's hostname; an external synthetic hostname
+  // can make cache.put fail in Cloudflare and prevent every report from being saved.
+  const cacheKeyUrl = new URL('/__internal-rate-limit/error-report/' + key, request.url)
+  const cacheKey = new Request(cacheKeyUrl.toString())
   const cache = caches.default
   if (await cache.match(cacheKey)) return true
   await cache.put(cacheKey, new Response('1', {
