@@ -51,7 +51,6 @@ export async function onRequestPost(context) {
     const message = String(body.message || '').trim()
     const language = String(body.language || 'en')
     const pageUrl = String(body.pageUrl || '').slice(0, 2048)
-    const userAgent = String(request.headers.get('User-Agent') || '').slice(0, 500)
     const countryCode = String(body.countryCode || '').slice(0, 2).toUpperCase() || null
     const postalCode = String(body.postalCode || '').slice(0, 16) || null
     const lat = Number.isFinite(Number(body.lat)) ? Number(body.lat) : null
@@ -66,10 +65,10 @@ export async function onRequestPost(context) {
     const sql = getSql(context)
     const rows = await sql`
       INSERT INTO public.error_reports
-        (category, message, contact_email, language, page_url, country_code, postal_code, map_lat, map_lon, user_agent)
+        (category, message, contact_email, language, page_url, country_code, postal_code, map_lat, map_lon)
       VALUES
         (${category}, ${message}, NULL, ${language}, ${pageUrl || null},
-         ${countryCode}, ${postalCode}, ${lat}, ${lon}, ${userAgent})
+         ${countryCode}, ${postalCode}, ${lat}, ${lon})
       RETURNING id
     `
     return response({ ok: true, reportId: rows[0].id }, 201)
