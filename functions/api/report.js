@@ -70,7 +70,7 @@ export async function onRequestPost(context) {
     if (lon !== null && (lon < -180 || lon > 180)) return response({ error: 'Invalid map longitude.' }, 400)
 
     stage = 'database-connection-and-insert'
-    const sql = getSql(context)
+    const sql = getSql(context, 'REPORT_DATABASE_URL')
     const identityRows = await sql`SELECT current_user AS role, current_database() AS database`
     databaseIdentity = identityRows[0] || null
     const rows = await sql`
