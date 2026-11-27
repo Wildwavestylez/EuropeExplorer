@@ -33,6 +33,7 @@ async function checkRateLimit(request) {
 
 export async function onRequestPost(context) {
   let stage = 'request-validation'
+  let databaseIdentity = null
   try {
     const request = context.request
     const origin = request.headers.get('Origin')
@@ -70,6 +71,8 @@ export async function onRequestPost(context) {
 
     stage = 'database-connection-and-insert'
     const sql = getSql(context)
+    const identityRows = await sql`SELECT current_user AS role, current_database() AS database`
+    databaseIdentity = identityRows[0] || null
     const rows = await sql`
       INSERT INTO public.error_reports
         (category, message, contact_email, language, page_url, country_code, postal_code, map_lat, map_lon)
@@ -95,7 +98,7 @@ export async function onRequestPost(context) {
     const diagnosticId = globalThis.crypto?.randomUUID?.() || String(Date.now())
     return response({
       error: 'The report could not be saved right now. Please try again later.',
-      diagnostic: { id: diagnosticId, stage, errorName: error?.name || 'Error', errorCode: error?.code || error?.cause?.code || null }
+      diagnostic: { id: diagnosticId, stage, errorName: error?.name || 'Error', errorCode: error?.code || error?.cause?.code || null, databaseRole: databaseIdentity?.role || null, databaseName: databaseIdentity?.database || null }
     }, 500)
   }
 }
