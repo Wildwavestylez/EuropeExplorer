@@ -278,7 +278,7 @@ export default function App() {
       if (!response.ok) {
         const diagnostic = payload.diagnostic
         const details = diagnostic
-          ? `\\nDiagnostika: ${diagnostic.id} | fáze: ${diagnostic.stage} | chyba: ${diagnostic.errorName}${diagnostic.errorCode ? ` (${diagnostic.errorCode})` : ''}`
+          ? `\\nDiagnostika: ${diagnostic.id} | fáze: ${diagnostic.stage} | chyba: ${diagnostic.errorName}${diagnostic.errorCode ? ` (${diagnostic.errorCode})` : ''}${diagnostic.databaseRole ? ` | DB účet: ${diagnostic.databaseRole}` : ''}${diagnostic.databaseName ? ` | DB: ${diagnostic.databaseName}` : ''}`
           : ''
         throw new Error(`${payload.error || 'Report submission failed.'}${details}`)
       }
