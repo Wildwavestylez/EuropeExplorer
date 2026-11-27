@@ -1,8 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 
-export function getSql(context) {
-  if (!context.env.DATABASE_URL) throw new Error('DATABASE_URL secret is not configured')
-  return neon(context.env.DATABASE_URL)
+export function getSql(context, secretName = 'DATABASE_URL') {
+  const connectionString = context.env[secretName]
+  if (!connectionString) throw new Error(`${secretName} secret is not configured`)
+  return neon(connectionString)
 }
 
 export function json(data, status = 200) {
