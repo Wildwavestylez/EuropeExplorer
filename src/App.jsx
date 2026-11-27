@@ -11,6 +11,18 @@ async function apiGet(path) {
   if (!response.ok) throw new Error(payload.error || 'Data service request failed.')
   return payload
 }
+async function recordSearchAnalytics(term, language, source = 'intro') {
+  try {
+    await fetch('/api/search-analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ term, language, source }),
+      keepalive: true,
+    })
+  } catch {
+    // Analytics is best-effort and must never interrupt search.
+  }
+}
 const recordCache = new Map()
 const placesCache = new Map()
 async function getPublishedPlaces(country) {
@@ -554,6 +566,7 @@ export default function App() {
         return
       }
 
+      void recordSearchAnalytics(term, lang, 'intro')
       const [lon, lat] = coordinates.map(Number)
       setMapStart([lat, lon])
       setSelected(null)
