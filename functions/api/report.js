@@ -98,7 +98,7 @@ export async function onRequestPost(context) {
     const diagnosticId = globalThis.crypto?.randomUUID?.() || String(Date.now())
     return response({
       error: 'The report could not be saved right now. Please try again later.',
-      diagnostic: { id: diagnosticId, stage, errorName: error?.name || 'Error', errorCode: error?.code || error?.cause?.code || null, databaseRole: databaseIdentity?.role || null, databaseName: databaseIdentity?.database || null }
+      diagnostic: { id: diagnosticId, stage, errorName: error?.name || 'Error', errorCode: error?.code || error?.cause?.code || null, errorMessage: String(error?.message || error || '').slice(0, 300), errorDetail: String(error?.detail || error?.cause?.message || '').slice(0, 300) || null, databaseRole: databaseIdentity?.role || null, databaseName: databaseIdentity?.database || null }
     }, 500)
   }
 }
