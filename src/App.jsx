@@ -276,15 +276,11 @@ export default function App() {
       })})
       const payload = await response.json()
       if (!response.ok) {
-        const diagnostic = payload.diagnostic
-        const details = diagnostic
-          ? `\\nDiagnostika: ${diagnostic.id} | fáze: ${diagnostic.stage} | chyba: ${diagnostic.errorName}${diagnostic.errorCode ? ` (${diagnostic.errorCode})` : ''}${diagnostic.databaseRole ? ` | DB účet: ${diagnostic.databaseRole}` : ''}${diagnostic.databaseName ? ` | DB: ${diagnostic.databaseName}` : ''}${diagnostic.errorMessage ? ` | detail: ${diagnostic.errorMessage}` : ''}${diagnostic.errorDetail ? ` | PG detail: ${diagnostic.errorDetail}` : ''}`
-          : ''
-        throw new Error(`${payload.error || 'Report submission failed.'}${details}`)
+        throw new Error(payload.error || 'Report submission failed.')
       }
       setReportResult((reportCopy[lang] || reportCopy.en).success); setReportMessage('')
     } catch (error) {
-      setReportError(`${(reportCopy[lang] || reportCopy.en).error}\\n${error.message || error}`)
+      setReportError((reportCopy[lang] || reportCopy.en).error)
       console.error('[Europe Explorer] report submission failed:',error)
     } finally { setReportSending(false) }
   }
