@@ -109,7 +109,7 @@ export async function onRequestGet({ params }) {
   const canonical = SITE + '/' + lang + SLUG
   const alternates = SUPPORTED.map(code => '<link rel="alternate" hreflang="' + code + '" href="' + SITE + '/' + code + SLUG + '">').join('\n')
   const languageLinks = SUPPORTED.map(code => '<a href="/' + code + SLUG + '" hreflang="' + code + '" lang="' + code + '"' + (code === lang ? ' aria-current="page" class="active"' : '') + '>' + code.toUpperCase() + '</a>').join('')
-  const jsonLd = { '@context': 'https://schema.org', '@type': 'City', name: 'Brno', description: t.description, url: canonical, containedInPlace: { '@type': 'City', name: 'Brno' } }
+  const jsonLd = { '@context': 'https://schema.org', '@type': 'City', name: 'Brno', description: t.description, url: canonical, containedInPlace: { '@type': 'AdministrativeArea', name: 'South Moravian Region' } }
   const html = `<!doctype html>
 <html lang="${lang}">
 <head>
