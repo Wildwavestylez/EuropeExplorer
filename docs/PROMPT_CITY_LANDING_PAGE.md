@@ -102,6 +102,19 @@ Každá jazyková verze musí obsahovat:
 
 CTA musí návštěvníka přivést do mapy Europe Exploreru.
 
+### POVINNÉ UMÍSTĚNÍ CTA — MOBILE FIRST
+
+- Primární CTA musí být umístěno **bezprostředně pod úvodním hookem**, přímo v hero sekci stránky.
+- Na mobilním telefonu musí návštěvník po přečtení hooku vidět hlavní tlačítko hned pod ním, bez nutnosti scrollovat do další sekce.
+- Podpůrná věta a případný další obsah následují až po tomto prvním CTA.
+- CTA nesmí být na mobilu schované až pod hero sekcí ani až v další obsahové části stránky.
+- Použij pouze jedno primární CTA; nevytvářej jeho druhou duplicitní kopii v nižší části stránky.
+- CTA musí zůstat skutečným odkazem na správný mapový deep link a musí být pohodlně klikatelné na dotykovém displeji.
+- Rozvržení musí být responzivní. Na desktopu může být hero vzdušnější, ale pořadí obsahu musí zachovat jasnou hierarchii: hook → primární CTA → podpůrný text.
+- Při kontrole vždy ověř mobilní zobrazení: H1, celý hook a tlačítko mají tvořit bezprostředně navazující úvodní blok. Pokud tlačítko kvůli výšce obsahu není viditelné bez scrollování, uprav rozestupy a hero layout.
+
+Toto pravidlo je závazné pro všechna nová města i následné úpravy existujících landing pages.
+
 Zachovej konzistentní URL strukturu:
 
 `/{lang}/places/{country-slug}/{city-slug}`
