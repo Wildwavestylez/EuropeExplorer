@@ -60,6 +60,26 @@ const LANGS = [
   { id: 'es', label: 'ES' }, { id: 'fr', label: 'FR' }, { id: 'it', label: 'IT' }, { id: 'nl', label: 'NL' }, 
 ]
 
+function getInitialMapLink() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('view') !== 'map') return null
+    const country = String(params.get('country') || '').toUpperCase()
+    if (!['CZ', 'IT', 'SK'].includes(country)) return null
+    const lat = Number(params.get('lat'))
+    const lon = Number(params.get('lon'))
+    const requestedZoom = Number(params.get('zoom') || 13)
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) return null
+    const zoom = Number.isFinite(requestedZoom) ? Math.min(17, Math.max(12, requestedZoom)) : 13
+    const supported = LANGS.map(language => language.id)
+    const requestedLang = normalizeLanguageCode(params.get('lang'))
+    const lang = supported.includes(requestedLang) ? requestedLang : getInitialLanguage()
+    return { country, center: [lat, lon], zoom, lang }
+  } catch {
+    return null
+  }
+}
+
 function normalizeLanguageCode(languageCode) {
   const code = String(languageCode || '').toLowerCase().split('-')[0]
   // Slovak is not a separate UI language; use the complete Czech interface and content.
@@ -146,9 +166,15 @@ function factCoordinates(place) {
     .map(point => [point.lat, point.lon])
 }
 
-function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, areaMapPoints }) {
+function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, areaMapPoints, initialMapView }) {
   const map = useMap()
+  const initialMapViewApplied = useRef(false)
   useEffect(() => {
+    if (initialMapView && !initialMapViewApplied.current) {
+      initialMapViewApplied.current = true
+      map.flyTo(initialMapView.center, initialMapView.zoom, { duration: 0.8 })
+      return
+    }
     // Only an explicit Random Explorer request may move the map to a selected fact.
     // Selecting a fact by clicking its map pin must never change the current map view.
     if (Array.isArray(randomFocusPoint) && randomFocusPoint.length === 2
@@ -178,7 +204,7 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
     } else {
       map.setView([51.1657, 10.4515], 6, { animate: true })
     }
-  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, areaMapPoints, map])
+  }, [place, selectedFact, randomFocusPoint, mapStart, activeMode, areaPlaces, areaBounds, areaMapPoints, initialMapView, map])
   return null
 }
 
@@ -224,22 +250,23 @@ function getCounty(place) {
 }
 
 export default function App() {
+  const initialMapLink = useRef(getInitialMapLink()).current
   const [places, setPlaces] = useState([])
-  const [activeMode, setActiveMode] = useState('')
+  const [activeMode, setActiveMode] = useState(initialMapLink ? 'search' : '')
   const [introSearch, setIntroSearch] = useState('')
   const [introMessage, setIntroMessage] = useState('')
-  const [mapStart, setMapStart] = useState([51.1657, 10.4515])
+  const [mapStart, setMapStart] = useState(() => initialMapLink?.center || [51.1657, 10.4515])
   const [loadDiagnostics, setLoadDiagnostics] = useState(null)
   const [mapSourceTimings, setMapSourceTimings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [lang, setLang] = useState(getInitialLanguage)
+  const [lang, setLang] = useState(() => initialMapLink?.lang || getInitialLanguage())
   useEffect(() => { document.documentElement.lang = lang }, [lang])
   const [selected, setSelected] = useState(null)
   const [selectedFact, setSelectedFact] = useState(null)
   const [randomFocusPoint, setRandomFocusPoint] = useState(null)
-  const [country, setCountry] = useState('DE')
+  const [country, setCountry] = useState(() => initialMapLink?.country || 'DE')
   const [areaPickerOpen, setAreaPickerOpen] = useState(false)
   const [areaCatalog, setAreaCatalog] = useState([])
   const [areaCatalogLoading, setAreaCatalogLoading] = useState(false)
@@ -716,7 +743,7 @@ export default function App() {
           <MapContainer center={center} zoom={6} scrollWheelZoom className="map">
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <OverviewZoomHint />
-            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} />
+            <MapFocus place={selected} selectedFact={selectedFact} randomFocusPoint={randomFocusPoint} mapStart={mapStart} activeMode={activeMode} areaPlaces={activeMode === 'area' ? filtered : null} areaBounds={areaBounds} areaMapPoints={areaMapPoints} initialMapView={initialMapLink} />
             <ViewportFactLayer country={country} lang={lang} onSelectFact={handleFactSelect} onSourceTiming={entry => setMapSourceTimings(current => [entry, ...current.filter(item => !(item.source === entry.source && item.viewport === entry.viewport))].slice(0, 12))} />
           </MapContainer>
           <div className="map-legend"><span className="legend-dot" /> {u.factLocation} <span className="legend-line" /> {u.clusterHint}</div>
