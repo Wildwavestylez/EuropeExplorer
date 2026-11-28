@@ -28,7 +28,7 @@ function renderFact(fact, featured = false) {
 const FEATURE_ORDER = [
   'Historické centrum a náměstí Přemysla Otakara II.',
   'Samsonova kašna',
-  'Černá věž',
+  'Černá věž – městská dominanta',
   'Katedrála svatého Mikuláše',
   'Barokní radnice na hlavním náměstí',
   'Dominikánský klášter a kostel Obětování Panny Marie',
