@@ -100,7 +100,7 @@ function escapeHtml(value = '') {
 }
 
 function mapUrl(lang) {
-  const params = new URLSearchParams({ view: 'map', country: 'CZ', lat: '48.97456', lon: '14.47428', zoom: '18', lang })
+  const params = new URLSearchParams({ view: 'map', country: 'CZ', lat: '48.97456', lon: '14.47428', zoom: '17', lang })
   return '/?' + params.toString()
 }
 
