@@ -1,10 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://europe-explorer.org/</loc></url>
   <url>
-    <loc>https://europe-explorer.org/</loc>
+    <loc>https://europe-explorer.org/cs/places/czechia/ceske-budejovice</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://europe-explorer.org/places/czechia/ceske-budejovice</loc>
+    <loc>https://europe-explorer.org/de/places/czechia/ceske-budejovice</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://europe-explorer.org/en/places/czechia/ceske-budejovice</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://europe-explorer.org/es/places/czechia/ceske-budejovice</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://europe-explorer.org/fr/places/czechia/ceske-budejovice</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://europe-explorer.org/it/places/czechia/ceske-budejovice</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://europe-explorer.org/nl/places/czechia/ceske-budejovice</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
