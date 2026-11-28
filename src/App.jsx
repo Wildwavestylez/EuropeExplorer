@@ -11,12 +11,12 @@ async function apiGet(path) {
   if (!response.ok) throw new Error(payload.error || 'Data service request failed.')
   return payload
 }
-async function recordSearchAnalytics(term, language, source = 'intro') {
+async function recordSearchAnalytics(term) {
   try {
     await fetch('/api/search-analytics', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ term, language, source }),
+      body: JSON.stringify({ term }),
       keepalive: true,
     })
   } catch {
@@ -566,7 +566,7 @@ export default function App() {
         return
       }
 
-      void recordSearchAnalytics(term, lang, 'intro')
+      void recordSearchAnalytics(term)
       const [lon, lat] = coordinates.map(Number)
       setMapStart([lat, lon])
       setSelected(null)
