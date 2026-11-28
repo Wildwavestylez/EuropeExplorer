@@ -4,6 +4,7 @@ const CENTER = { lat: '49.1945', lon: '16.5997', zoom: '17' }
 const LANGS = {
   "cs": {
     "locale": "cs_CZ",
+    "h1": "Hrad Špilberk",
     "title": "Hrad Špilberk – příběhy brněnské pevnosti | Europe Explorer",
     "description": "Poznejte Špilberk, hrad založený ve 13. století, který se proměnil v mohutnou pevnost i známý žalář národů. Objevujte jeho okolí s Europe Explorerem.",
     "eyebrow": "BRNO · JIŽNÍ MORAVA",
@@ -17,6 +18,7 @@ const LANGS = {
   },
   "de": {
     "locale": "de_DE",
+    "h1": "Burg Špilberk",
     "title": "Burg Špilberk – Geschichten aus Brünns Festung | Europe Explorer",
     "description": "Entdecke die im 13. Jahrhundert gegründete Burg Špilberk, die später zur mächtigen Festung und zum berüchtigten Gefängnis wurde.",
     "eyebrow": "BRÜNN · SÜDMÄHREN",
@@ -30,6 +32,7 @@ const LANGS = {
   },
   "en": {
     "locale": "en_US",
+    "h1": "Špilberk Castle",
     "title": "Špilberk Castle – stories from Brno’s fortress | Europe Explorer",
     "description": "Discover Špilberk, founded in the 13th century and later transformed into a major fortress and the notorious prison known as the Jail of Nations.",
     "eyebrow": "BRNO · SOUTH MORAVIA",
@@ -43,6 +46,7 @@ const LANGS = {
   },
   "es": {
     "locale": "es_ES",
+    "h1": "Castillo de Špilberk",
     "title": "Castillo de Špilberk – historias de la fortaleza de Brno | Europe Explorer",
     "description": "Descubre Špilberk, fundado en el siglo XIII y transformado más tarde en una gran fortaleza y en la célebre «cárcel de las naciones».",
     "eyebrow": "BRNO · MORAVIA DEL SUR",
@@ -56,6 +60,7 @@ const LANGS = {
   },
   "fr": {
     "locale": "fr_FR",
+    "h1": "Château du Špilberk",
     "title": "Château du Špilberk – histoires de la forteresse de Brno | Europe Explorer",
     "description": "Découvrez le Špilberk, fondé au XIIIe siècle, devenu une puissante forteresse puis la célèbre « prison des nations ».",
     "eyebrow": "BRNO · MORAVIE-DU-SUD",
@@ -69,6 +74,7 @@ const LANGS = {
   },
   "it": {
     "locale": "it_IT",
+    "h1": "Castello dello Špilberk",
     "title": "Castello dello Špilberk – storie della fortezza di Brno | Europe Explorer",
     "description": "Scopri lo Špilberk, fondato nel XIII secolo e trasformato in seguito in una grande fortezza e nella famigerata «prigione delle nazioni».",
     "eyebrow": "BRNO · MORAVIA MERIDIONALE",
@@ -82,6 +88,7 @@ const LANGS = {
   },
   "nl": {
     "locale": "nl_NL",
+    "h1": "Burcht Špilberk",
     "title": "Burcht Špilberk – verhalen uit het fort van Brno | Europe Explorer",
     "description": "Ontdek Špilberk, gesticht in de 13e eeuw en later uitgebouwd tot een machtige vesting en de beruchte ‘gevangenis der naties’.",
     "eyebrow": "BRNO · ZUID-MORAVIË",
@@ -127,7 +134,7 @@ export async function onRequestGet({ params }) {
 </head>
 <body><div class="shell">
 <header class="topbar"><a class="brand" href="/"><span class="mark">✳</span><span>EUROPE EXPLORER<span class="brand-light"> / DISCOVER</span></span></a><nav class="languages" aria-label="Language">${languageLinks}</nav></header>
-<main><section class="hero"><div class="copy"><div class="eyebrow">${escapeHtml(t.eyebrow)}</div><div class="kicker">${escapeHtml(t.kicker)}</div><h1>Špilberk Castle</h1><p class="hook">${escapeHtml(t.hook)}</p></div><div class="art" aria-hidden="true"><div class="orb"><div class="grid"></div><i class="pin one"></i><i class="pin two"></i><i class="pin three"></i></div><div class="orbit"></div><div class="orbit two"></div><span class="visual-label a">${escapeHtml(t.tag)}</span><span class="visual-label b">${CENTER.lat}° N · ${CENTER.lon}° E</span></div></section>
+<main><section class="hero"><div class="copy"><div class="eyebrow">${escapeHtml(t.eyebrow)}</div><div class="kicker">${escapeHtml(t.kicker)}</div><h1>${escapeHtml(t.h1)}</h1><p class="hook">${escapeHtml(t.hook)}</p></div><div class="art" aria-hidden="true"><div class="orb"><div class="grid"></div><i class="pin one"></i><i class="pin two"></i><i class="pin three"></i></div><div class="orbit"></div><div class="orbit two"></div><span class="visual-label a">${escapeHtml(t.tag)}</span><span class="visual-label b">${CENTER.lat}° N · ${CENTER.lon}° E</span></div></section>
 <section class="explore"><div><h2>${escapeHtml(t.tagline)}</h2><p>${escapeHtml(t.support)}</p></div><div class="action"><a class="cta" href="${mapUrl(lang)}">${escapeHtml(t.cta)} <span aria-hidden="true">↗</span></a></div></section></main>
 <footer class="foot"><span>EUROPE EXPLORER · BUILT FOR THE CURIOUS</span><a href="/">${escapeHtml(t.back)} ↗</a></footer>
 </div></body></html>`
