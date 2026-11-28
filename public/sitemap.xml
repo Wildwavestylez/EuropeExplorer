@@ -29,4 +29,18 @@
   <url><loc>https://europe-explorer.org/fr/places/czechia/ostrava</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://europe-explorer.org/it/places/czechia/ostrava</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://europe-explorer.org/nl/places/czechia/ostrava</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/cs/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/de/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/en/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/es/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/fr/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/it/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/nl/places/czechia/brno</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/cs/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/de/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/en/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/es/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/fr/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/it/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://europe-explorer.org/nl/places/czechia/brno/spilberk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>
