@@ -154,6 +154,19 @@ The reference URL pattern is `/{lang}/places/{country-slug}/{city-slug}` (for ex
 - Keep the page focused and lightweight: destination identity, hook, one short product explanation, one primary CTA.
 - Use a destination-relevant hero image only when its source and usage rights are suitable.
 - The primary CTA must be visually prominent and must open the destination-focused interactive map.
+
+### Mandatory mobile-first CTA placement
+
+- Place the single primary CTA **immediately below the introductory hook**, inside the hero section.
+- On mobile, visitors must encounter the button directly after reading the hook, without having to scroll into the next section.
+- The product-support sentence and any following content come after this first CTA.
+- Never hide the primary CTA below the hero section or defer it to a lower content block on mobile.
+- Use exactly one primary CTA; do not repeat it as a duplicate button farther down the page.
+- Keep the CTA as a real, accessible link to the validated destination-specific map deep link, with a touch-friendly target.
+- Use responsive spacing and sizing. The desktop composition may remain more spacious, but preserve the content hierarchy: hook → primary CTA → product-support sentence.
+- Check the mobile layout explicitly. The H1, complete hook, and CTA should form one continuous opening block. If the CTA falls below the initial mobile view because of excessive spacing or hero height, adjust the layout and spacing.
+
+This rule is mandatory for every new city landing page and every future revision of an existing one.
 - The initial map view should show the destination's most useful visitor-facing area, with enough surrounding streets and nearby highlights to provide orientation.
 - Do not add postal-code lists, internal-area maps, database metadata, or large attraction catalogues.
 
