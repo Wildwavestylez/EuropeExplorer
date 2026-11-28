@@ -70,7 +70,7 @@ function getInitialMapLink() {
     const lon = Number(params.get('lon'))
     const requestedZoom = Number(params.get('zoom') || 13)
     if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) return null
-    const zoom = Number.isFinite(requestedZoom) ? Math.min(17, Math.max(12, requestedZoom)) : 13
+    const zoom = Number.isFinite(requestedZoom) ? Math.min(18, Math.max(12, requestedZoom)) : 13
     const supported = LANGS.map(language => language.id)
     const requestedLang = normalizeLanguageCode(params.get('lang'))
     const lang = supported.includes(requestedLang) ? requestedLang : getInitialLanguage()
