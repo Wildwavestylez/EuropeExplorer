@@ -140,9 +140,9 @@ Localization is editorial, not mechanical translation. Preserve factual accuracy
 - Use appropriate destination structured data (normally City / Place where supported by verified facts).
 - Include the page in the XML sitemap only when it is live and returns a successful indexable response.
 - The primary CTA must link to the Europe Explorer application with a validated deep link that sets the correct country, destination coordinates, zoom level, and interface language.
-- Do not publish a CTA deep link until the application actually supports and correctly handles its parameters.
+- The application deep-link parameters are `view=map`, `country`, `lat`, `lon`, `zoom`, and `lang`. The app validates supported countries and coordinates and clamps zoom to its supported range.
 
-URL path strategy is a technical decision to be finalized consistently across all city pages; do not assume a proposed path pattern is already implemented.
+The reference URL pattern is `/{lang}/places/{country-slug}/{city-slug}` (for example, `/cs/places/czechia/ceske-budejovice`). Use the same pattern consistently for future destinations. The legacy unlocalized České Budějovice URL redirects to the Czech version.
 
 ## 8. Visual and UX requirements
 
@@ -172,3 +172,8 @@ Before publishing a city page, verify:
 České Budějovice is the first city-page implementation and should be used to validate this standard. Its public page should be reduced to the structure in section 3. The existing long attraction-card listing is not the target experience.
 
 The internal postal-area records may continue to power map discoveries behind the scenes. They must remain invisible as a concept in the city landing-page experience.
+
+
+## 11. Implemented reference baseline
+
+The first reference implementation is available in all seven languages at `/{lang}/places/czechia/ceske-budejovice`. It uses the Europe Explorer dark/navy and amber visual identity, localized metadata and page copy, language switching, canonical and reciprocal hreflang links, City structured data, and a CTA deep link centered on the historic city centre. The old unlocalized route redirects to the Czech page. All seven URLs are included in the XML sitemap.
