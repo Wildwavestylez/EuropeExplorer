@@ -170,9 +170,11 @@ function MapFocus({ place, selectedFact, randomFocusPoint, mapStart, activeMode,
   const map = useMap()
   const initialMapViewApplied = useRef(false)
   useEffect(() => {
-    if (initialMapView && !initialMapViewApplied.current) {
-      initialMapViewApplied.current = true
-      map.flyTo(initialMapView.center, initialMapView.zoom, { duration: 0.8 })
+    if (initialMapView) {
+      if (!initialMapViewApplied.current) {
+        initialMapViewApplied.current = true
+        map.flyTo(initialMapView.center, initialMapView.zoom, { duration: 0.8 })
+      }
       return
     }
     // Only an explicit Random Explorer request may move the map to a selected fact.
