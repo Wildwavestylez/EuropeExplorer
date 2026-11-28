@@ -1,7 +1,7 @@
 const SITE='https://europe-explorer.org'
 const SLUG="/places/italy/rome/tridente-borghese"
 const CENTER={lat:"41.9090",lon:"12.4795",zoom:"15"}
-const NAME="Tridente & Villa Borghese"
+const NAME_BY_LANG={"cs":"Severní Řím a Villa Borghese","de":"Nördliches Rom und Villa Borghese","en":"Northern Rome & Villa Borghese","es":"Roma norte y Villa Borghese","fr":"Rome du Nord et Villa Borghese","it":"Roma nord e Villa Borghese","nl":"Noord-Rome en Villa Borghese"}
 const LANGS={
   "cs": {
     "locale": "cs_IT",
@@ -95,7 +95,7 @@ function mapUrl(lang){const params=new URLSearchParams({view:'map',country:'IT',
 export async function onRequestGet({params}){
  const lang=SUPPORTED.includes(String(params.lang||'').toLowerCase())?String(params.lang).toLowerCase():null
  if(!lang)return new Response('Not found',{status:404,headers:{'content-type':'text/plain; charset=utf-8'}})
- const t=LANGS[lang],canonical=SITE+'/'+lang+SLUG
+ const t=LANGS[lang],NAME=NAME_BY_LANG[lang],canonical=SITE+'/'+lang+SLUG
  const alternates=SUPPORTED.map(code=>'<link rel="alternate" hreflang="'+code+'" href="'+SITE+'/'+code+SLUG+'">').join('\\n')
  const languageLinks=SUPPORTED.map(code=>'<a href="/'+code+SLUG+'" hreflang="'+code+'" lang="'+code+'"'+(code===lang?' aria-current="page" class="active"':'')+'>'+code.toUpperCase()+'</a>').join('')
  const jsonLd={'@context':'https://schema.org','@type':"Place",name:NAME,containedInPlace:{'@type':'City',name:'Rome'},description:t.description,url:canonical}
